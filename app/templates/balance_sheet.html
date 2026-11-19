@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Balance Sheet - CA Workbench{% endblock %}
+{% block content %}
+<div id="stmt-warning" class="panel bad" hidden></div>
+<section class="card">
+  <div class="row between">
+    <h2 id="stmt-title">Balance Sheet</h2>
+    <div class="row"><span class="muted" id="stmt-unit"></span><span id="stmt-check"></span>
+      <button type="button" class="no-print" data-print>🖨 Print / Save PDF</button></div>
+  </div>
+  <div class="scroll">
+    <table class="stmt" id="stmt-table">
+      <thead><tr><th>Particulars</th><th>Note No.</th><th class="num" id="th-cur">Current</th><th class="num" id="th-prev">Previous</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/static/js/workpapers.js"></script><script src="/static/js/statement.js"></script>{% endblock %}

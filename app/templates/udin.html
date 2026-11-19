@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}UDIN - CA Workbench{% endblock %}
+{% block content %}
+<section class="card">
+  <h2>UDIN dashboard</h2>
+  <p class="muted">Every Partner sign-off (v1, v2, …) needs a UDIN, the 18-character ICAI Unique Document Identification Number generated on the ICAI portal. Record it here against the signed version.</p>
+  <div class="pack-kpis" id="udin-cards"></div>
+</section>
+
+<section class="card" id="udin-form-card">
+  <h2>Record a UDIN</h2>
+  <div class="row filters">
+    <label>Signed version <select id="u-version"></select></label>
+    <label>UDIN <input type="text" id="u-number" maxlength="18" placeholder="18 characters, A-Z and 0-9" autocomplete="off" style="width:230px; text-transform:uppercase"></label>
+    <label>Generated on <input type="date" id="u-date"></label>
+    <label>Document <input type="text" id="u-doc" value="Statutory Audit Report" maxlength="80"></label>
+    <button type="button" class="primary" id="u-save" disabled>Record UDIN</button>
+  </div>
+  <div class="muted" id="u-hint"></div>
+</section>
+
+<section class="card">
+  <h2>UDIN register</h2>
+  <div class="scroll">
+    <table id="udin-table">
+      <thead><tr><th>Version</th><th>Report status</th><th>Signed by</th><th>UDIN</th><th>Status</th><th>Generated on</th><th>Recorded by</th><th>Action</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/static/js/udin.js"></script>{% endblock %}

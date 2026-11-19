@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Notes - CA Workbench{% endblock %}
+{% block content %}
+<div id="stmt-warning" class="panel bad" hidden></div>
+<section class="card">
+  <div class="row between">
+    <h2>Notes to the financial statements</h2>
+    <div class="row"><span class="muted" id="notes-unit"></span><span id="notes-summary"></span>
+      <button type="button" class="no-print" id="notes-toggle">Expand all</button>
+      <button type="button" class="no-print" data-print>🖨 Print / Save PDF</button></div>
+  </div>
+  <p class="muted">Each note lists the ledgers mapped to it. The note total is checked against its Balance Sheet / P&amp;L line to the paisa.</p>
+</section>
+<div id="notes-list"></div>
+{% endblock %}
+{% block scripts %}<script src="/static/js/workpapers.js"></script><script src="/static/js/notes.js"></script>{% endblock %}

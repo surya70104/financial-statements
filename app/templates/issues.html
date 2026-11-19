@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Issues - CA Workbench{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="row between"><h2>Issue tracker</h2><div class="row" id="issue-summary" aria-live="polite"></div></div>
+  <p class="muted">One list for everything that needs attention. <b>Check</b> and <b>Mapping</b> issues are raised by the system and clear themselves once the underlying problem is fixed. Only <b>Manual</b> issues are cleared by hand, with a resolution note.</p>
+  <div class="row filters">
+    <label>Source <select id="f-source"><option value="">All</option><option value="check">Check</option><option value="mapping">Mapping</option><option value="manual">Manual</option></select></label>
+    <label>Status <select id="f-status"><option value="open">Open</option><option value="cleared">Cleared</option><option value="">All</option></select></label>
+  </div>
+  <div class="scroll">
+    <table id="issues-table">
+      <thead><tr><th>#</th><th>Source</th><th>Issue</th><th class="num">Amount</th><th>Status</th><th>Last seen</th><th>Resolution</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Raise a manual review issue</h2>
+  <div class="row filters">
+    <input type="text" id="new-title" placeholder="Title, e.g. Confirm related-party disclosure" maxlength="200" style="min-width:320px">
+    <input type="text" id="new-detail" placeholder="Detail (optional)" style="min-width:320px">
+    <input type="text" id="new-amount" placeholder="Amount ₹ (optional)" inputmode="decimal" style="width:160px">
+    <button type="button" class="primary" id="new-save">Raise issue</button>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/static/js/issues.js"></script>{% endblock %}

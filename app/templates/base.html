@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}CA Workbench{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body data-page="{{ page }}">
+  <header class="topbar">
+    <div class="brand">CA Workbench <span>Financial Statements</span></div>
+    <div class="engagement"><span id="engagement-label">Loading engagement&hellip;</span> <span class="locked-badge" id="locked-badge" hidden title="Signed off by the Partner: data is frozen">🔒 LOCKED</span></div>
+    <div class="controls">
+      <div class="seg" id="unit-toggle" role="group" aria-label="Display unit">
+        <button type="button" data-unit="LAKH">Lakhs</button>
+        <button type="button" data-unit="RUPEE">Rupees</button>
+      </div>
+      <label class="userbox">User
+        <select id="user-switcher" aria-label="Switch user"></select>
+      </label>
+    </div>
+  </header>
+  <nav class="tabs">
+    <a href="/" class="{{ 'active' if page == 'tb' }}">Trial Balance &amp; Import</a>
+    <a href="/mapping" class="{{ 'active' if page == 'mapping' }}">Mapping <span class="badge" id="nav-unmapped" hidden>0</span></a>
+    <a href="/adjustments" class="{{ 'active' if page == 'adjustments' }}">Adjustments</a>
+    <a href="/checks" class="{{ 'active' if page == 'checks' }}">Checks <span class="badge" id="nav-checks" hidden>–</span></a>
+    <a href="/balance-sheet" class="{{ 'active' if page == 'bs' }}">Balance Sheet</a>
+    <a href="/pnl" class="{{ 'active' if page == 'pnl' }}">Profit &amp; Loss</a>
+    <a href="/working-papers" class="{{ 'active' if page == 'wp' }}">Working Papers</a>
+    <a href="/issues" class="{{ 'active' if page == 'issues' }}">Issues <span class="badge" id="nav-issues" hidden>0</span></a>
+    <a href="/signoff" class="{{ 'active' if page == 'signoff' }}">Sign-Off</a>
+    <a href="/udin" class="{{ 'active' if page == 'udin' }}">UDIN</a>
+    <a href="/pack" class="{{ 'active' if page == 'pack' }}">Audit Pack</a>
+    <a href="/audit-trail" class="{{ 'active' if page == 'audit' }}">Audit Trail</a>
+    <a href="/notes" class="{{ 'active' if page == 'notes' }}">Notes</a>
+    <a href="/ratios" class="{{ 'active' if page == 'ratios' }}">Ratios</a>
+  </nav>
+  <div class="banner" id="template-banner" hidden>
+    Template <b id="template-name"></b> has not been confirmed for this entity type (open question Q2). Equity labels and mapping may change once confirmed.
+  </div>
+  <div class="print-header" id="print-header" aria-hidden="true">
+    <div class="ph-company" id="ph-company"></div>
+    <div class="ph-line" id="ph-entity"></div>
+    <div class="ph-title" id="ph-title"></div>
+    <div class="ph-line" id="ph-period"></div>
+    <div class="ph-line" id="ph-unit"></div>
+  </div>
+  <main>{% block content %}{% endblock %}</main>
+  <div id="toast" class="toast" hidden></div>
+  <script src="/static/js/money.js"></script>
+  <script src="/static/js/layout.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

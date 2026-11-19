@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Checks - CA Workbench{% endblock %}
+{% block content %}
+<div id="checks-banner" class="panel" aria-live="polite"></div>
+<section class="card">
+  <div class="row between">
+    <h2>Checks engine</h2>
+    <div class="row"><span class="muted" id="checks-run-info"></span><button type="button" class="primary" id="rerun">Re-run Checks</button></div>
+  </div>
+  <p class="muted">Checks re-run automatically after every trial balance import and every mapping change. A check that is still pending definition counts as not passing.</p>
+  <div class="scroll">
+    <table id="checks-table">
+      <thead><tr><th>Code</th><th>Name</th><th>Rule</th><th>Status</th><th class="num">Exact difference</th><th>Detail</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/static/js/checks.js"></script>{% endblock %}

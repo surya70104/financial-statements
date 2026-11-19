@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Trial Balance &amp; Import - CA Workbench{% endblock %}
+{% block content %}
+<section class="card">
+  <h2>Import Tally trial balance</h2>
+  <p class="muted">CSV or Excel (.xlsx) with columns: Ledger Name, Under Group, Opening Balance, Opening Type, Debit, Credit, Closing Balance, Closing Type.
+     Re-importing updates existing ledgers; it never duplicates them and never removes your saved mappings.</p>
+  <form id="import-form" class="row">
+    <input type="file" id="import-file" accept=".csv,.xlsx" required>
+    <button type="submit" id="import-btn" class="primary">Import</button>
+    <span id="import-hint" class="muted"></span>
+  </form>
+  <div id="import-result" hidden></div>
+</section>
+
+<section class="cards" id="summary-cards"></section>
+
+<section class="card">
+  <div class="row between">
+    <h2>Ledgers <span class="muted" id="ledger-count"></span></h2>
+    <input type="search" id="ledger-filter" placeholder="Filter by ledger or group&hellip;">
+  </div>
+  <div class="scroll">
+    <table id="ledger-table">
+      <thead><tr>
+        <th>#</th><th>Ledger</th><th>Tally group</th>
+        <th class="num">Opening</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Closing</th><th>Mapping</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <p class="muted" id="unit-note"></p>
+</section>
+
+<section class="card">
+  <h2>Upload history</h2>
+  <div class="scroll">
+    <table id="upload-table">
+      <thead><tr><th>When</th><th>File</th><th>By</th><th>Status</th><th class="num">Rows</th>
+        <th class="num">New</th><th class="num">Updated</th><th class="num">Unchanged</th><th class="num">Deactivated</th>
+        <th class="num">Total Dr</th><th class="num">Total Cr</th><th>Message</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/static/js/tb.js"></script>{% endblock %}

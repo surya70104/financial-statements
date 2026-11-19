@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Ratios - CA Workbench{% endblock %}
+{% block content %}
+<div class="banner" id="q7-banner" hidden></div>
+<div id="stmt-warning" class="panel bad" hidden></div>
+<section class="card">
+  <div class="row between"><h2>Ratios</h2><div class="row"><span class="muted" id="ratios-unit"></span>
+    <button type="button" class="no-print" data-print>🖨 Print / Save PDF</button></div></div>
+  <p class="muted">Calculated only from the Balance Sheet and Profit &amp; Loss figures. A ratio shows N/A when its denominator is zero.</p>
+  <div class="scroll">
+    <table id="ratios-table">
+      <thead><tr><th>Ratio</th><th>Formula</th><th class="num">Numerator</th><th class="num">Denominator</th><th class="num">Computed ratio</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/static/js/ratios.js"></script>{% endblock %}

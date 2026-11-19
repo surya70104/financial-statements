@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Mapping - CA Workbench{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="row between">
+    <h2>Map ledgers to Schedule III</h2>
+    <div class="row counters" id="counters" aria-live="polite"></div>
+  </div>
+  <p class="muted">Each ledger maps to exactly one Schedule III line and one note. Pick the line; the note fills in automatically. Mappings are saved immediately and kept across re-imports.</p>
+  <div class="row filters">
+    <input type="search" id="map-search" placeholder="Search ledger&hellip;">
+    <select id="map-status" aria-label="Mapping status">
+      <option value="all">All ledgers</option>
+      <option value="unmapped">Unmapped only</option>
+      <option value="mapped">Mapped only</option>
+    </select>
+    <select id="map-group" aria-label="Tally group"><option value="">All Tally groups</option></select>
+    <button type="button" class="primary" id="auto-map" title="Maps every unmapped ledger to the default Schedule III line for its Tally group">Auto-Map by Tally Group</button>
+  </div>
+  <div class="scroll">
+    <table id="map-table">
+      <thead><tr><th>#</th><th>Ledger</th><th>Tally group</th><th class="num">Closing</th>
+        <th>Schedule III line</th><th>Note</th><th>Status</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/static/js/mapping.js"></script>{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Sign-Off - CA Workbench{% endblock %}
+{% block content %}
+<section class="card" id="gate-card">
+  <div class="row between"><h2>Sign-off gate</h2><span id="gate-status" aria-live="polite"></span></div>
+  <p class="muted">The Partner can sign off only when <b>every active check passes</b> and <b>no issue is open</b>. Signing off locks the statements: no import, mapping or adjustment changes are accepted afterwards.</p>
+  <div id="blockers"></div>
+</section>
+
+<section class="card" id="form-card">
+  <h2>Sign off &amp; lock statements</h2>
+  <div class="row filters">
+    <input type="text" id="so-note" placeholder="Sign-off note (optional)" maxlength="500" style="min-width:360px">
+  </div>
+  <label class="row"><input type="checkbox" id="so-confirm"> I confirm the statements are final and understand that the engagement will be locked.</label>
+  <div class="row" style="margin-top:10px">
+    <button type="button" class="primary" id="so-btn" disabled>Sign Off &amp; Lock Statements</button>
+    <span class="muted" id="so-hint"></span>
+  </div>
+</section>
+
+<section id="certificate"></section>
+
+<section class="card" id="reopen-card" hidden>
+  <h2>Reopen Engagement for Revision</h2>
+  <p class="muted">Only a Partner can do this. The active version is marked <b>superseded</b> (its snapshot is kept unchanged), the engagement unlocks for edits, and a new version must be signed off to lock it again.</p>
+  <div class="row filters">
+    <input type="text" id="ro-reason" placeholder="Reason for re-opening (required)" maxlength="500" style="min-width:360px">
+    <button type="button" id="ro-btn" disabled>Reopen Engagement for Revision</button>
+  </div>
+  <div class="muted" id="ro-hint"></div>
+</section>
+
+<section class="card" id="versions-card">
+  <h2>Version history</h2>
+  <div class="scroll">
+    <table id="versions-table">
+      <thead><tr><th>Version</th><th>Status</th><th>Signed by</th><th>Signed at</th><th class="num">Total assets</th><th class="num">Profit / (loss)</th><th>UDIN</th><th>Re-opened</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/static/js/signoff.js"></script>{% endblock %}

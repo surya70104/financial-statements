@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Adjustments - CA Workbench{% endblock %}
+{% block content %}
+<section class="card" id="entry-card">
+  <h2>New adjustment entry</h2>
+  <p class="muted">Saved as a <b>draft</b>. A draft changes nothing until a different person (Checker or Partner) approves it. Approved entries are locked; correct them with a reversal.</p>
+  <div class="row filters">
+    <label>Date <input type="date" id="adj-date"></label>
+    <label class="grow">Description <input type="text" id="adj-desc" placeholder="e.g. Accrue audit fee" maxlength="300"></label>
+  </div>
+  <div class="scroll">
+    <table id="adj-lines">
+      <thead><tr><th>Ledger</th><th class="num">Debit (₹)</th><th class="num">Credit (₹)</th><th>Line note</th><th></th></tr></thead>
+      <tbody></tbody>
+      <tfoot>
+        <tr class="total"><td>Total</td><td class="num" id="tot-dr"></td><td class="num" id="tot-cr"></td><td colspan="2" id="tot-diff"></td></tr>
+      </tfoot>
+    </table>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <button type="button" id="add-line">+ Add line</button>
+    <button type="button" class="primary" id="save-entry" disabled>Save draft</button>
+    <span class="muted" id="entry-hint"></span>
+  </div>
+</section>
+
+<section class="card">
+  <div class="row between"><h2>Adjustments register</h2><span id="reg-counts"></span></div>
+  <div class="scroll">
+    <table id="register">
+      <thead><tr><th>Entry #</th><th>Date</th><th>Description</th><th>Lines</th><th>Status</th><th>Created by</th><th>Approved by</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card">
+  <div class="row between"><h2>Adjusted trial balance</h2><span class="muted" id="atb-unit"></span></div>
+  <p class="muted">Imported closing balance plus <b>approved</b> adjustments only. Statements, notes, ratios and checks are built from these figures.</p>
+  <div class="row filters"><label><input type="checkbox" id="atb-changed"> Show only ledgers with adjustments</label></div>
+  <div class="scroll">
+    <table id="atb">
+      <thead><tr><th>Ledger</th><th>Tally group</th><th class="num">Imported</th><th class="num">Adjustments</th><th class="num">Adjusted</th></tr></thead>
+      <tbody></tbody><tfoot></tfoot>
+    </table>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/static/js/adjustments.js"></script>{% endblock %}

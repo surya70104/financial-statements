@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Audit Pack - CA Workbench{% endblock %}
+{% block content %}
+<section class="card no-print">
+  <div class="row between">
+    <div><h2>Audit Committee / IA Pack</h2><span class="muted">Assembled live from the database; it always matches the statements, checks and registers.</span></div>
+    <div class="row">
+      <button type="button" class="primary" id="pack-print">🖨 Print / Export Pack</button>
+      <button type="button" id="pack-json">⬇ Download JSON Snapshot</button>
+    </div>
+  </div>
+</section>
+<div id="pack"><p class="muted">Loading the pack&hellip;</p></div>
+{% endblock %}
+{% block scripts %}<script src="/static/js/pack.js"></script>{% endblock %}

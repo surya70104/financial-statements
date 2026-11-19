@@ -1,0 +1,51 @@
+/* Notes to the financial statements (T-09): one expandable card per note, with a live tie-out to its statement line. */
+(function () {
+  const { h } = App;
+  let data = null, allOpen = false;
+  const openNotes = new Set();
+
+  function noteCard(n) {
+    const rows = n.ledgers.map(l => h("tr", {}, h("td", {}, l.ledger_name), h("td", {}, l.tally_group || ""),
+      h("td", { class: "num" }, App.money(l.opening)), h("td", { class: "num" }, App.money(l.movement)), h("td", { class: "num" }, App.money(l.closing))));
+    n.extras.forEach(e => rows.push(h("tr", { class: "extra" }, h("td", { colspan: 4 }, e.label), h("td", { class: "num" }, App.money(e.closing)))));
+    if (!rows.length) rows.push(h("tr", {}, h("td", { colspan: 5, class: "muted" }, "No ledgers are mapped to this note.")));
+    const tie = n.ties
+      ? h("span", { class: "chip ok" }, "✓ Ties to Statement")
+      : h("span", { class: "chip bad" }, "✗ Differs by " + Money.exact(n.difference));
+    const d = h("details", { class: "card note-card" },
+      h("summary", {}, h("span", { class: "note-title" }, "Note " + n.note_no + " – " + n.title),
+        h("span", { class: "note-total" }, App.money(n.note_total)), WP.chip("note", "NOTE-" + n.note_no, "Note " + n.note_no + " – " + n.title), tie),
+      h("div", { class: "scroll" }, h("table", {},
+        h("thead", {}, h("tr", {}, h("th", {}, "Ledger"), h("th", {}, "Tally group"), h("th", { class: "num" }, "Opening"),
+          h("th", { class: "num" }, "Movement"), h("th", { class: "num" }, "Closing " + data.current_label))),
+        h("tbody", {}, rows),
+        h("tfoot", {},
+          h("tr", { class: "total" }, h("td", { colspan: 4 }, "Note " + n.note_no + " total"), h("td", { class: "num" }, App.money(n.note_total))),
+          h("tr", {}, h("td", { colspan: 4 }, "Statement line: " + n.line_label), h("td", { class: "num" }, App.money(n.line_total))),
+          h("tr", {}, h("td", { colspan: 4 }, "Difference"), h("td", { class: "num" }, Money.exact(n.difference)))))));
+    d.open = allOpen || openNotes.has(n.note_no) || !n.ties;
+    d.addEventListener("toggle", () => { if (d.open) openNotes.add(n.note_no); else openNotes.delete(n.note_no); });
+    return d;
+  }
+
+  function render() {
+    document.getElementById("notes-unit").textContent = "Amounts in " + App.unitLabel();
+    const t = data.tie_summary;
+    document.getElementById("notes-summary").replaceChildren(h("span", { class: "chip " + (t.failing.length ? "bad" : "ok") },
+      t.tying + " of " + t.notes + " notes tie to their statement line"));
+    const w = data.warnings, box = document.getElementById("stmt-warning");
+    box.hidden = !w.unmapped_ledgers;
+    if (w.unmapped_ledgers) box.replaceChildren(h("b", {}, "⚠ " + w.unmapped_ledgers + " ledger(s) not mapped and excluded."), " ", h("a", { href: "/mapping" }, "Go to Mapping"));
+    document.getElementById("notes-list").replaceChildren(...data.notes.map(noteCard));
+  }
+
+  App.ready.then(async () => {
+    document.getElementById("notes-toggle").addEventListener("click", e => {
+      allOpen = !allOpen; e.target.textContent = allOpen ? "Collapse all" : "Expand all"; openNotes.clear(); render();
+    });
+    App.onChange(what => { if (data && what === "unit") render(); });
+    data = await App.api("/api/engagements/" + App.state.engagement.id + "/notes");
+    WP.subscribe(() => { if (data) render(); });
+    await WP.load();                                       // renders via the subscription above
+  }).catch(err => App.toast(err.message, true));
+})();

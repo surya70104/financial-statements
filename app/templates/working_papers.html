@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Working Papers - CA Workbench{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="row between"><h2>Working paper coverage</h2><div class="row" id="wp-summary" aria-live="polite"></div></div>
+  <p class="muted">Every statement line and every note should point to the working paper that supports it. A Checker or Partner marks each paper reviewed (never the person who attached it).</p>
+  <div class="row filters">
+    <label>Show <select id="wp-type"><option value="">Lines and notes</option><option value="statement_line">Statement lines</option><option value="note">Notes</option></select></label>
+    <label>Coverage <select id="wp-cover">
+      <option value="">All</option><option value="none">No working paper</option><option value="unreviewed">Attached, not fully reviewed</option><option value="reviewed">Fully reviewed</option></select></label>
+  </div>
+  <div class="scroll">
+    <table id="wp-table">
+      <thead><tr><th>Type</th><th>Statement</th><th>Line / note</th><th class="num">Papers</th><th class="num">Reviewed</th><th>Status</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/static/js/workpapers.js"></script><script src="/static/js/wp.js"></script>{% endblock %}

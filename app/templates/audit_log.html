@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Audit Trail - CA Workbench{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="row between"><h2>Audit trail</h2><span class="muted" id="audit-count" aria-live="polite"></span></div>
+  <p class="muted">The permanent record of who did what, and when. Entries can never be edited or deleted. Newest first.</p>
+  <div class="row filters">
+    <label>Show <select id="a-scope"><option value="all">Every change</option><option value="events">Business events only</option></select></label>
+    <label>Record type <select id="a-table"><option value="">All</option></select></label>
+    <input type="search" id="a-search" placeholder="Filter loaded rows (user, event, text)&hellip;">
+  </div>
+  <div class="scroll">
+    <table id="audit-table">
+      <thead><tr><th>#</th><th>When</th><th>User</th><th>Action</th><th>Record</th><th>What changed</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <div class="row" style="margin-top:10px"><button type="button" id="a-more" hidden>Load older entries</button></div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/static/js/audit_log.js"></script>{% endblock %}
