@@ -1,0 +1,100 @@
+"""T-18 UDIN dashboard. Each signed report version has exactly one UDIN slot: pending_udin -> recorded -> revoked.
+
+The UDIN is the 18-character ICAI Unique Document Identification Number. It is generated on the ICAI portal; this module only
+records it against the signed version and keeps the history. Format: exactly 18 characters, uppercase letters and digits.
+"""
+import re
+from datetime import date
+
+from fastapi import HTTPException
+
+from app.services import audit_service
+
+UDIN_RE = re.compile(r"^[A-Z0-9]{18}$")
+
+
+def _engagement(cur, engagement_id: int) -> None:
+    cur.execute("SELECT 1 FROM engagements WHERE id = %s", (engagement_id,))
+    if not cur.fetchone():
+        raise HTTPException(404, "Engagement not found.")
+
+
+def _rows(cur, engagement_id: int) -> list:
+    cur.execute("""SELECT u.id AS udin_id, u.signoff_version_id AS version_id, v.version_number, v.status AS version_status,
+                          v.signed_off_at, su.full_name AS signed_off_by_name, v.reopen_reason,
+                          v.snapshot_json -> 'balance_sheet' ->> 'total_assets' AS total_assets,
+                          v.snapshot_json -> 'profit_and_loss' ->> 'profit_for_period' AS profit_for_period,
+                          u.status, u.udin_number, u.document_type, u.udin_generated_date,
+                          u.recorded_at, ru.full_name AS recorded_by_name, u.revoked_at, vu.full_name AS revoked_by_name, u.revoked_reason
+                     FROM udin_records u
+                     JOIN report_signoff_versions v ON v.id = u.signoff_version_id
+                     JOIN users su ON su.id = v.signed_off_by
+                     LEFT JOIN users ru ON ru.id = u.recorded_by LEFT JOIN users vu ON vu.id = u.revoked_by
+                    WHERE u.engagement_id = %s ORDER BY v.version_number DESC""", (engagement_id,))
+    return cur.fetchall()
+
+
+def dashboard(cur, engagement_id: int) -> dict:
+    _engagement(cur, engagement_id)
+    rows = _rows(cur, engagement_id)
+    count = lambda st: sum(1 for r in rows if r["status"] == st)
+    return {"summary": {"total_versions": len(rows), "pending_count": count("pending_udin"), "recorded_count": count("recorded"),
+                        "revoked_count": count("revoked")},
+            "items": rows}
+
+
+def _slot(cur, engagement_id: int, version_id: int) -> dict:
+    cur.execute("SELECT id, status FROM udin_records WHERE engagement_id = %s AND signoff_version_id = %s FOR UPDATE", (engagement_id, version_id))
+    rec = cur.fetchone()
+    if not rec:
+        raise HTTPException(404, "Signed version not found for this engagement.")
+    return rec
+
+
+def _item(cur, engagement_id: int, version_id: int) -> dict:
+    return next(r for r in _rows(cur, engagement_id) if r["version_id"] == version_id)
+
+
+def record(cur, user: dict, engagement_id: int, version_id: int, udin_number: str | None, generated_date: str | None,
+           document_type: str | None) -> dict:
+    _engagement(cur, engagement_id)
+    udin = (udin_number or "").strip()
+    if not UDIN_RE.match(udin):
+        raise HTTPException(400, "A UDIN is exactly 18 characters: uppercase letters A-Z and digits 0-9 only.")
+    try:
+        gen = date.fromisoformat((generated_date or "").strip())
+    except ValueError:
+        raise HTTPException(400, "Enter the UDIN generation date as YYYY-MM-DD.")
+    if gen > date.today():
+        raise HTTPException(400, "The UDIN generation date cannot be in the future.")
+    rec = _slot(cur, engagement_id, version_id)
+    if rec["status"] != "pending_udin":
+        raise HTTPException(409, f"This version's UDIN is already {rec['status'].replace('_udin', '')}; it cannot be recorded again.")
+    cur.execute("SELECT 1 FROM udin_records WHERE udin_number = %s", (udin,))
+    if cur.fetchone():
+        raise HTTPException(409, "This UDIN is already recorded against another signed version.")
+    doc = (document_type or "").strip() or "Statutory Audit Report"
+    cur.execute("""UPDATE udin_records SET status = 'recorded', udin_number = %s, udin_generated_date = %s, document_type = %s,
+                          recorded_by = %s, recorded_at = now() WHERE id = %s""", (udin, gen, doc, user["id"], rec["id"]))
+    item = _item(cur, engagement_id, version_id)
+    audit_service.event(cur, engagement_id, "UDIN_RECORDED",
+                        {"version_number": item["version_number"], "udin_number": udin, "udin_generated_date": gen, "document_type": doc,
+                         "recorded_by": user["full_name"]}, entity_table="udin_records", entity_id=str(rec["id"]))
+    return item
+
+
+def revoke(cur, user: dict, engagement_id: int, version_id: int, reason: str | None) -> dict:
+    _engagement(cur, engagement_id)
+    reason = (reason or "").strip()
+    if not reason:
+        raise HTTPException(400, "A reason is required to revoke a UDIN.")
+    rec = _slot(cur, engagement_id, version_id)
+    if rec["status"] != "recorded":
+        raise HTTPException(409, "Only a recorded UDIN can be revoked.")
+    cur.execute("""UPDATE udin_records SET status = 'revoked', revoked_by = %s, revoked_at = now(), revoked_reason = %s WHERE id = %s""",
+                (user["id"], reason, rec["id"]))
+    item = _item(cur, engagement_id, version_id)
+    audit_service.event(cur, engagement_id, "UDIN_REVOKED",
+                        {"version_number": item["version_number"], "udin_number": item["udin_number"], "revoked_by": user["full_name"]},
+                        entity_table="udin_records", entity_id=str(rec["id"]), reason=reason)
+    return item
