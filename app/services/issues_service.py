@@ -3,6 +3,7 @@
 * mapping issues - written only by exceptions_service (one per unmapped ledger).
 * check issues   - written only here (sync_check_issues): ONE deduplicated issue per failing active check, re-opened if the
                    check fails again, auto-cleared when it passes (or is switched off). Runs after every checks run.
+* materiality issues - written only by materiality_service (one per statement line whose year-on-year change is above materiality).
 * manual issues  - raised by people, cleared by people with a mandatory resolution note.
 System issues cannot be cleared by hand: they clear themselves when the underlying problem is fixed at its source.
 """
@@ -72,7 +73,7 @@ def list_issues(cur, engagement_id: int, source: str | None = None, status: str 
     if not cur.fetchone():
         raise HTTPException(404, "Engagement not found.")
     cur.execute("""SELECT source, status, count(*) AS n FROM exceptions WHERE engagement_id = %s GROUP BY source, status""", (engagement_id,))
-    by_source: dict = {s: {"open": 0, "cleared": 0} for s in ("check", "mapping", "manual")}
+    by_source: dict = {s: {"open": 0, "cleared": 0} for s in ("check", "mapping", "manual", "materiality")}
     for r in cur.fetchall():
         by_source.setdefault(r["source"], {"open": 0, "cleared": 0})[r["status"]] = r["n"]
     cur.execute("""SELECT x.id, x.source, x.reference_id, x.cause_code, c.label AS cause, x.title, x.detail, x.amount, x.status,
@@ -81,7 +82,7 @@ def list_issues(cur, engagement_id: int, source: str | None = None, status: str 
                      FROM exceptions x JOIN exception_causes c ON c.code = x.cause_code
                      LEFT JOIN users cu ON cu.id = x.cleared_by LEFT JOIN users cr ON cr.id = x.created_by
                     WHERE x.engagement_id = %(e)s AND (%(s)s::text IS NULL OR x.source = %(s)s) AND (%(t)s::text IS NULL OR x.status = %(t)s)
-                    ORDER BY (x.status = 'open') DESC, CASE x.source WHEN 'check' THEN 0 WHEN 'manual' THEN 1 ELSE 2 END, x.id""",
+                    ORDER BY (x.status = 'open') DESC, CASE x.source WHEN 'check' THEN 0 WHEN 'manual' THEN 1 WHEN 'materiality' THEN 2 ELSE 3 END, x.id""",
                 {"e": engagement_id, "s": source, "t": status})
     items = cur.fetchall()                                   # read before the cursor is reused by the queries below
     totals = open_counts(cur, engagement_id)

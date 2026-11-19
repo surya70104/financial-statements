@@ -17,6 +17,11 @@ PERMISSIONS: dict[str, set[str]] = {
     "wp.attach": {"MAKER", "CHECKER", "PARTNER"},        # attach or remove an UNREVIEWED link
     "wp.review": {"CHECKER", "PARTNER"},                 # plus the rule reviewer != attacher (working_papers_service)
     "pack.export": {"MAKER", "CHECKER", "PARTNER"},      # printing / downloading the pack changes no data; it is only logged
+    "materiality.set": {"CHECKER", "PARTNER"},           # a reviewer-level judgement: Makers can view it but not set it
+    "tds.edit": {"MAKER", "CHECKER", "PARTNER"},         # add / import / delete DRAFT TDS-TCS rows
+    "tds.post": {"CHECKER", "PARTNER"},                  # post rows to the adjusted TB (plus: not the person who entered them)
+    "fd.edit": {"MAKER", "CHECKER", "PARTNER"},
+    "fd.post": {"CHECKER", "PARTNER"},
     "signoff.perform": {"PARTNER"},
     "signoff.reopen": {"PARTNER"},                       # formal re-opening of a signed-off engagement (needs a reason)
     "udin.manage": {"PARTNER"},                          # record / revoke the ICAI UDIN of a signed version

@@ -68,6 +68,17 @@ const App = (() => {
     setChecksBadge(e.checks);
     setIssuesBadge(e.issues);
     document.getElementById("locked-badge").hidden = !e.is_locked;
+    renderMaterialityBadge();
+  }
+
+  function renderMaterialityBadge() {
+    const b = document.getElementById("materiality-badge"), m = state.engagement && state.engagement.materiality;
+    if (!b) return;
+    b.hidden = !m;
+    if (m) {
+      b.textContent = "Materiality: " + money(m.overall_materiality) + (state.unit === "LAKH" ? " lakh" : "") + " (set by " + m.set_by + ")";
+      b.title = "Overall materiality " + Money.exact(m.overall_materiality) + " set " + new Date(m.set_at).toLocaleString();
+    }
   }
 
   function setIssuesBadge(c) {
@@ -151,7 +162,7 @@ const App = (() => {
     renderHeader(); renderUnitToggle();
     document.querySelectorAll("[data-print]").forEach(b => b.addEventListener("click", () => window.print()));
     document.querySelectorAll("#unit-toggle button").forEach(b => b.addEventListener("click", () => {
-      state.unit = b.dataset.unit; store("cw.unit", state.unit); renderUnitToggle(); notify("unit");
+      state.unit = b.dataset.unit; store("cw.unit", state.unit); renderUnitToggle(); renderMaterialityBadge(); notify("unit");
     }));
     return state;
   }

@@ -8,7 +8,7 @@ from app.db import tx
 from app.jsonutil import json_response
 from app.security import current_user, require
 from app.services import (adjustments_service, audit_service, checks_service, exceptions_service, issues_service, locking,
-                          mapping_service, notes_service, pack_service, ratios_service, signoff_service, statement_service, udin_service,
+                          fd_service, mapping_service, materiality_service, notes_service, pack_service, ratios_service, signoff_service, statement_service, tds_service, udin_service,
                           tb_import, working_papers_service)
 
 router = APIRouter(prefix="/api")
@@ -58,6 +58,7 @@ def engagement_header(engagement_id: int):
         eng["checks"] = checks_service.summary(cur, engagement_id)
         eng["issues"] = issues_service.open_counts(cur, engagement_id)
         eng["is_locked"] = locking.is_locked(cur, engagement_id)
+        eng["materiality"] = materiality_service.get_config(cur, engagement_id)
         return json_response(eng)
 
 
@@ -330,6 +331,128 @@ def post_udin(engagement_id: int, version_id: int, body: UdinIn, user: dict = De
 def post_udin_revoke(engagement_id: int, version_id: int, body: UdinRevokeIn, user: dict = Depends(require("udin.manage"))):
     with tx(user["id"]) as cur:
         return json_response(udin_service.revoke(cur, user, engagement_id, version_id, body.revoked_reason))
+
+
+# ---- T-23 materiality -----------------------------------------------------------------------------------------
+class MaterialityIn(BaseModel):
+    input_mode: str | None = None
+    overall_materiality: str | int | float | None = None
+    benchmark_basis: str | None = None
+    benchmark_pct: str | int | float | None = None
+    performance_materiality: str | int | float | None = None
+    trivial_threshold: str | int | float | None = None
+    notes: str | None = None
+
+
+@router.get("/engagements/{engagement_id}/materiality")
+def get_materiality(engagement_id: int):
+    with tx() as cur:
+        return json_response(materiality_service.get(cur, engagement_id))
+
+
+@router.post("/engagements/{engagement_id}/materiality")
+def post_materiality(engagement_id: int, body: MaterialityIn, user: dict = Depends(require("materiality.set"))):
+    with tx(user["id"]) as cur:
+        return json_response(materiality_service.save(cur, user, engagement_id, body.model_dump()))
+
+
+# ---- T-19 TDS / TCS entry pack and T-22 fixed deposit register ---------------------------------------------------
+class TdsRowIn(BaseModel):
+    entry_type: str | None = None
+    section_code: str | None = None
+    party_name: str | None = None
+    ledger_code: str | None = None
+    base_amount: str | int | float | None = None
+    tax_rate: str | int | float | None = None
+    tax_amount: str | int | float | None = None
+
+
+class FdRowIn(BaseModel):
+    bank_name: str | None = None
+    fd_number: str | int | None = None
+    ledger_code: str | None = None
+    principal_amount: str | int | float | None = None
+    interest_rate: str | int | float | None = None
+    start_date: str | None = None
+    maturity_date: str | None = None
+    maturity_classification: str | None = None
+    accrued_interest: str | int | float | None = None
+    schedule_line_code: str | None = None
+
+
+class PostIn(BaseModel):
+    ids: list[int] | None = None
+
+
+async def _upload(file: UploadFile) -> bytes:
+    data = await file.read()
+    if not data:
+        raise HTTPException(422, {"message": "The uploaded file is empty.", "errors": []})
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(413, "File is larger than 10 MB.")
+    return data
+
+
+@router.get("/engagements/{engagement_id}/tds-tcs")
+def get_tds(engagement_id: int):
+    with tx() as cur:
+        return json_response(tds_service.list_rows(cur, engagement_id))
+
+
+@router.post("/engagements/{engagement_id}/tds-tcs/import")
+async def import_tds(engagement_id: int, file: UploadFile = File(...), user: dict = Depends(require("tds.edit"))):
+    data = await _upload(file)
+    with tx(user["id"]) as cur:
+        return json_response(tds_service.import_file(cur, user, engagement_id, file.filename or "upload", data))
+
+
+@router.post("/engagements/{engagement_id}/tds-tcs/post")
+def post_tds(engagement_id: int, body: PostIn | None = None, user: dict = Depends(require("tds.post"))):
+    with tx(user["id"]) as cur:
+        return json_response(tds_service.post(cur, user, engagement_id, body.ids if body else None))
+
+
+@router.post("/engagements/{engagement_id}/tds-tcs")
+def add_tds(engagement_id: int, body: TdsRowIn, user: dict = Depends(require("tds.edit"))):
+    with tx(user["id"]) as cur:
+        return json_response(tds_service.add_row(cur, user, engagement_id, body.model_dump()))
+
+
+@router.delete("/engagements/{engagement_id}/tds-tcs/{row_id}")
+def delete_tds(engagement_id: int, row_id: int, user: dict = Depends(require("tds.edit"))):
+    with tx(user["id"]) as cur:
+        return json_response(tds_service.delete_row(cur, user, engagement_id, row_id))
+
+
+@router.get("/engagements/{engagement_id}/fixed-deposits")
+def get_fds(engagement_id: int):
+    with tx() as cur:
+        return json_response(fd_service.list_rows(cur, engagement_id))
+
+
+@router.post("/engagements/{engagement_id}/fixed-deposits/import")
+async def import_fds(engagement_id: int, file: UploadFile = File(...), user: dict = Depends(require("fd.edit"))):
+    data = await _upload(file)
+    with tx(user["id"]) as cur:
+        return json_response(fd_service.import_file(cur, user, engagement_id, file.filename or "upload", data))
+
+
+@router.post("/engagements/{engagement_id}/fixed-deposits/post")
+def post_fds(engagement_id: int, body: PostIn | None = None, user: dict = Depends(require("fd.post"))):
+    with tx(user["id"]) as cur:
+        return json_response(fd_service.post(cur, user, engagement_id, body.ids if body else None))
+
+
+@router.post("/engagements/{engagement_id}/fixed-deposits")
+def add_fd(engagement_id: int, body: FdRowIn, user: dict = Depends(require("fd.edit"))):
+    with tx(user["id"]) as cur:
+        return json_response(fd_service.add_row(cur, user, engagement_id, body.model_dump()))
+
+
+@router.delete("/engagements/{engagement_id}/fixed-deposits/{row_id}")
+def delete_fd(engagement_id: int, row_id: int, user: dict = Depends(require("fd.edit"))):
+    with tx(user["id"]) as cur:
+        return json_response(fd_service.delete_row(cur, user, engagement_id, row_id))
 
 
 # ---- T-14 working papers ---------------------------------------------------------------------------------------

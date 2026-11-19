@@ -9,7 +9,8 @@
 <body data-page="{{ page }}">
   <header class="topbar">
     <div class="brand">CA Workbench <span>Financial Statements</span></div>
-    <div class="engagement"><span id="engagement-label">Loading engagement&hellip;</span> <span class="locked-badge" id="locked-badge" hidden title="Signed off by the Partner: data is frozen">🔒 LOCKED</span></div>
+    <div class="engagement"><span id="engagement-label">Loading engagement&hellip;</span> <span class="locked-badge" id="locked-badge" hidden title="Signed off by the Partner: data is frozen">🔒 LOCKED</span>
+      <a class="mat-badge" id="materiality-badge" href="/materiality" hidden></a></div>
     <div class="controls">
       <div class="seg" id="unit-toggle" role="group" aria-label="Display unit">
         <button type="button" data-unit="LAKH">Lakhs</button>
@@ -29,6 +30,9 @@
     <a href="/pnl" class="{{ 'active' if page == 'pnl' }}">Profit &amp; Loss</a>
     <a href="/working-papers" class="{{ 'active' if page == 'wp' }}">Working Papers</a>
     <a href="/issues" class="{{ 'active' if page == 'issues' }}">Issues <span class="badge" id="nav-issues" hidden>0</span></a>
+    <a href="/tds-tcs" class="{{ 'active' if page == 'tds' }}">TDS / TCS</a>
+    <a href="/fixed-deposits" class="{{ 'active' if page == 'fd' }}">FD Register</a>
+    <a href="/materiality" class="{{ 'active' if page == 'materiality' }}">Materiality</a>
     <a href="/signoff" class="{{ 'active' if page == 'signoff' }}">Sign-Off</a>
     <a href="/udin" class="{{ 'active' if page == 'udin' }}">UDIN</a>
     <a href="/pack" class="{{ 'active' if page == 'pack' }}">Audit Pack</a>

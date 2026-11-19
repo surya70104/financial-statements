@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}TDS / TCS - CA Workbench{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="row between"><h2>TDS / TCS entry pack</h2><span id="t-status" aria-live="polite"></span></div>
+  <p class="muted">Register tax deducted or collected at source, then <b>post</b> it: each row becomes one approved journal entry, so it flows into the adjusted trial balance, the Balance Sheet, checks and notes. Payables go to <b>Other current liabilities</b> and receivables to <b>Other current assets</b>. Post only items that are <b>not already</b> in the trial balance. Rows can be posted by a Checker or Partner, but not by the person who entered them.</p>
+  <div class="pack-kpis" id="t-cards"></div>
+</section>
+
+<section class="card" id="t-add-card">
+  <h2>Add rows</h2>
+  <div class="row filters">
+    <label>Upload Excel / CSV <input type="file" id="t-file" accept=".xlsx,.csv"></label>
+    <button type="button" id="t-upload" disabled>Upload</button>
+    <span class="muted">Columns: Entry Type, Section Code, Party Name, Ledger Code (optional), Base Amount, Tax Rate (%), Tax Amount (optional). Try <code>samples/tds_tcs_pack.xlsx</code>.</span>
+  </div>
+  <div id="t-errors"></div>
+  <details open>
+    <summary>Add a single row</summary>
+    <div class="row filters">
+      <label>Type <select id="t-type"><option value="TDS_PAYABLE">TDS payable</option><option value="TDS_RECEIVABLE">TDS receivable</option><option value="TCS_PAYABLE">TCS payable</option><option value="TCS_RECEIVABLE">TCS receivable</option></select></label>
+      <label>Section <input type="text" id="t-section" placeholder="194C" maxlength="8" style="width:80px"></label>
+      <label>Party <input type="text" id="t-party" placeholder="Party / ledger name" maxlength="200" style="width:220px"></label>
+      <label>Ledger (optional) <input type="text" id="t-ledger" placeholder="default by type" maxlength="200" style="width:200px"></label>
+    </div>
+    <div class="row filters">
+      <label>Base amount (₹) <input type="text" id="t-base" inputmode="decimal" style="width:140px" autocomplete="off"></label>
+      <label>Rate (%) <input type="text" id="t-rate" inputmode="decimal" style="width:80px" autocomplete="off"></label>
+      <label>Tax amount (₹, optional) <input type="text" id="t-tax" inputmode="decimal" placeholder="calculated" style="width:130px" autocomplete="off"></label>
+      <button type="button" class="primary" id="t-add" disabled>Add row</button>
+      <span class="muted" id="t-calc"></span>
+    </div>
+  </details>
+  <div class="muted" id="t-hint"></div>
+</section>
+
+<section class="card">
+  <div class="row between"><h2>Register</h2>
+    <div class="row"><span class="muted" id="t-post-hint"></span><button type="button" class="primary" id="t-post" disabled>Post to Adjusted TB</button></div></div>
+  <div class="scroll">
+    <table id="t-table">
+      <thead><tr><th>#</th><th>Type</th><th>Section</th><th>Party</th><th>Ledger</th><th class="num">Base</th><th class="num">Rate %</th><th class="num">Tax</th><th>Status</th><th>Entered by</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/static/js/tds_tcs.js"></script>{% endblock %}

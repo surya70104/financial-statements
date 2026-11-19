@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Materiality - CA Workbench{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="row between"><h2>Materiality</h2><span id="mat-status" aria-live="polite"></span></div>
+  <p class="muted">Set materiality for this engagement, either as an exact amount or as a percentage of a statement benchmark. Every statement line whose year-on-year change is <b>above overall materiality</b> is raised once in the Issue Tracker, and clears itself when materiality is raised or the change falls within it. Reviewers (Checker or Partner) can set it.</p>
+  <div id="mat-current"></div>
+</section>
+
+<section class="card" id="mat-form-card">
+  <h2>Set materiality</h2>
+  <div class="row">
+    <label><input type="radio" name="mat-mode" value="manual" checked> Manual amount</label>
+    <label><input type="radio" name="mat-mode" value="calculated"> Calculated (% of benchmark)</label>
+  </div>
+  <div class="row filters" id="mat-manual">
+    <label>Overall materiality (₹) <input type="text" id="m-overall" inputmode="decimal" placeholder="e.g. 150000.00" autocomplete="off"></label>
+  </div>
+  <div class="row filters" id="mat-calc" hidden>
+    <label>Benchmark <select id="m-basis"></select></label>
+    <label>Percentage <input type="text" id="m-pct" inputmode="decimal" placeholder="e.g. 1.00" style="width:90px" autocomplete="off"> %</label>
+    <span class="muted" id="m-bench"></span>
+  </div>
+  <div class="row filters">
+    <label>Performance materiality (₹, optional) <input type="text" id="m-perf" inputmode="decimal" placeholder="default 75%" autocomplete="off"></label>
+    <label>Clearly trivial (₹, optional) <input type="text" id="m-triv" inputmode="decimal" placeholder="default 5%" autocomplete="off"></label>
+  </div>
+  <div class="row filters"><input type="text" id="m-notes" placeholder="Notes / basis for the judgement (optional)" maxlength="500" style="min-width:420px"></div>
+  <div class="pack-kpis" id="mat-preview"></div>
+  <div class="row"><button type="button" class="primary" id="m-save" disabled>Save materiality</button><span class="muted" id="m-hint"></span></div>
+</section>
+
+<section class="card">
+  <div class="row between"><h2>Statement lines above materiality</h2><span class="muted" id="mat-count"></span></div>
+  <p class="muted" id="mat-note"></p>
+  <div class="scroll">
+    <table id="mat-table">
+      <thead><tr><th>Line</th><th>Note</th><th class="num">Current</th><th class="num">Previous</th><th class="num">Change</th><th class="num">Above materiality by</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/static/js/materiality.js"></script>{% endblock %}

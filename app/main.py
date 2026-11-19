@@ -60,6 +60,21 @@ def page_issues(request: Request):
     return templates.TemplateResponse(request, "issues.html", {"page": "issues"})
 
 
+@app.get("/tds-tcs", response_class=HTMLResponse, include_in_schema=False)
+def page_tds(request: Request):
+    return templates.TemplateResponse(request, "tds_tcs.html", {"page": "tds"})
+
+
+@app.get("/fixed-deposits", response_class=HTMLResponse, include_in_schema=False)
+def page_fd(request: Request):
+    return templates.TemplateResponse(request, "fixed_deposits.html", {"page": "fd"})
+
+
+@app.get("/materiality", response_class=HTMLResponse, include_in_schema=False)
+def page_materiality(request: Request):
+    return templates.TemplateResponse(request, "materiality.html", {"page": "materiality"})
+
+
 @app.get("/udin", response_class=HTMLResponse, include_in_schema=False)
 def page_udin(request: Request):
     return templates.TemplateResponse(request, "udin.html", {"page": "udin"})

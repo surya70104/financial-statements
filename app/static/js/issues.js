@@ -4,7 +4,7 @@
   let data = null;
   let clearing = null;                                // id of the manual issue whose clear form is open
   const eid = () => App.state.engagement.id;
-  const SOURCE = { check: ["bad", "CHECK"], mapping: ["warn", "MAPPING"], manual: ["ok", "MANUAL"] };
+  const SOURCE = { check: ["bad", "CHECK"], mapping: ["warn", "MAPPING"], materiality: ["warn", "MATERIALITY"], manual: ["ok", "MANUAL"] };
 
   function filters() { return { source: document.getElementById("f-source").value, status: document.getElementById("f-status").value }; }
 
@@ -12,7 +12,7 @@
     const s = data.summary;
     document.getElementById("issue-summary").replaceChildren(
       h("span", { class: "chip " + (s.open ? "bad" : "ok") }, s.open + " open"), h("span", { class: "chip ok" }, s.cleared + " cleared"),
-      ...["check", "mapping", "manual"].map(k => h("span", { class: "muted" }, k + ": " + s.by_source[k].open + " open")));
+      ...["check", "mapping", "materiality", "manual"].map(k => h("span", { class: "muted" }, k + ": " + s.by_source[k].open + " open")));
     App.setIssuesBadge(s);
   }
 

@@ -44,3 +44,14 @@ def client(test_db_url):
     from app.main import app
     with TestClient(app) as c:
         yield c
+
+
+def pytest_collection_modifyitems(items):
+    """Run the step files in step order (test_step2 ... test_step9, test_step10): plain alphabetical order would put
+    test_step10 before test_step1_db. The sort is stable, so tests inside a file keep their order."""
+    import re
+
+    def key(item):
+        m = re.search(r"test_step(\d+)_", item.nodeid)
+        return (1, int(m.group(1))) if m else (0, 0)
+    items.sort(key=key)

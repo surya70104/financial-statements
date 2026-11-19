@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}FD Register - CA Workbench{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="row between"><h2>Fixed deposit register</h2><span id="f-status" aria-live="polite"></span></div>
+  <p class="muted">List the bank fixed deposits, then <b>post</b> them: each FD becomes one approved journal entry that moves its principal out of the bank ledger onto the agreed Schedule III line (current or non-current) and books the interest accrued in the year as <b>Other income</b> and <b>Interest accrued</b>. Accrued interest is simple interest for the days inside the financial year (principal × rate × days ÷ 365); a figure you enter is checked against it. Post only FDs and interest that are <b>not already</b> in the trial balance. A Checker or Partner posts, never the person who entered the rows.</p>
+  <div class="pack-kpis" id="f-cards"></div>
+  <div class="muted" id="f-period"></div>
+</section>
+
+<section class="card" id="f-add-card">
+  <h2>Add FDs</h2>
+  <div class="row filters">
+    <label>Upload Excel / CSV <input type="file" id="f-file" accept=".xlsx,.csv"></label>
+    <button type="button" id="f-upload" disabled>Upload</button>
+    <span class="muted">Columns: Bank Name, FD Number, Principal Amount, Interest Rate (%), Start Date, Maturity Date, Maturity Classification, Accrued Interest, Schedule Line Code, Ledger Code (last four optional). Try <code>samples/fd_register.xlsx</code>.</span>
+  </div>
+  <div id="f-errors"></div>
+  <details open>
+    <summary>Add a single FD</summary>
+    <div class="row filters">
+      <label>Bank <input type="text" id="f-bank" placeholder="HDFC Bank" maxlength="100" style="width:150px"></label>
+      <label>FD number <input type="text" id="f-no" maxlength="60" style="width:170px"></label>
+      <label>Principal (₹) <input type="text" id="f-principal" inputmode="decimal" style="width:130px" autocomplete="off"></label>
+      <label>Rate (%) <input type="text" id="f-rate" inputmode="decimal" style="width:70px" autocomplete="off"></label>
+    </div>
+    <div class="row filters">
+      <label>Start <input type="date" id="f-start"></label>
+      <label>Maturity <input type="date" id="f-maturity"></label>
+      <label>Schedule III line <select id="f-line"><option value="">Default for the class</option><option value="BS.CA.CASH">Cash and cash equivalents</option><option value="BS.CA.OTH">Other current assets</option><option value="BS.NCA.OTH">Other non-current assets</option></select></label>
+      <label>Accrued interest (₹, optional) <input type="text" id="f-accrued" inputmode="decimal" placeholder="calculated" style="width:130px" autocomplete="off"></label>
+      <label>Bank ledger (optional) <input type="text" id="f-ledger" placeholder="matched by bank name" maxlength="200" style="width:180px"></label>
+      <button type="button" class="primary" id="f-add" disabled>Add FD</button>
+    </div>
+    <div class="muted" id="f-preview"></div>
+  </details>
+  <div class="muted" id="f-hint"></div>
+</section>
+
+<section class="card">
+  <div class="row between"><h2>Register</h2>
+    <div class="row"><span class="muted" id="f-post-hint"></span><button type="button" class="primary" id="f-post" disabled>Post to Adjusted TB</button></div></div>
+  <div class="scroll">
+    <table id="f-table">
+      <thead><tr><th>#</th><th>Bank</th><th>FD number</th><th class="num">Principal</th><th class="num">Rate %</th><th>Start</th><th>Maturity</th><th>Class</th><th>Line</th><th class="num">Accrued interest</th><th>Status</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/static/js/fixed_deposits.js"></script>{% endblock %}
