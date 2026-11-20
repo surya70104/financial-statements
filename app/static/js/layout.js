@@ -99,7 +99,7 @@ const App = (() => {
 
   // ---- print (T-15): the statutory report header is filled just before the browser prints ----
   const PRINT_TITLES = { bs: "Balance Sheet", pnl: "Statement of Profit and Loss", notes: "Notes to the Financial Statements",
-                         ratios: "Ratios", pack: "Audit Committee / IA Pack", audit: "Audit Trail" };
+                         ratios: "Ratios", pack: "Audit Committee / IA Pack", audit: "Audit Trail", lfar: "LFAR Assistant: Loan Scrutiny and Checklist" };
   const ENTITY = { PRIVATE_LIMITED: "Private Limited Company", PUBLIC_LIMITED: "Public Limited Company", LLP: "Limited Liability Partnership",
                    PARTNERSHIP: "Partnership Firm", PROPRIETORSHIP: "Proprietorship" };
   const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];

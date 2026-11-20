@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}LFAR - CA Workbench{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="row between"><h2>LFAR assistant</h2><button type="button" class="no-print" data-print>🖨 Print / Save PDF</button></div>
+  <p class="muted">Help for the Long Form Audit Report. <b>No ledger is copied here:</b> every balance and figure below is read live from the adjusted trial balance and the registers, so a change in the main trial balance shows here at once. You record the loan schedule (limits, rates, security) and your conclusion on each checkpoint.</p>
+  <div class="pack-kpis" id="l-cards"></div>
+</section>
+
+<section class="card">
+  <h2>Loan facilities &amp; sanctioned limit scrutiny</h2>
+  <div class="no-print">
+    <div class="row filters">
+      <label>Upload Excel / CSV <input type="file" id="l-file" accept=".xlsx,.csv"></label>
+      <button type="button" id="l-upload" disabled>Upload</button>
+      <span class="muted">Columns: Lender Name, Facility Type, Account Number, Ledger Code, Sanctioned Limit, Interest Rate (%), Security Details, EMI Status, Overdue Amount. The ledger code is the ledger's name in the trial balance. Try <code>samples/loan_schedule.xlsx</code>.</span>
+    </div>
+    <div id="l-errors"></div>
+    <details>
+      <summary>Add or update a single facility</summary>
+      <div class="row filters">
+        <label>Lender <input type="text" id="l-lender" maxlength="120" style="width:180px"></label>
+        <label>Type <select id="l-type"><option>Term Loan</option><option>Working Capital / CC</option><option>Vehicle / Equipment Loan</option><option>Unsecured Loan</option></select></label>
+        <label>Account no. <input type="text" id="l-acct" maxlength="60" style="width:150px"></label>
+        <label>Ledger <input type="text" id="l-ledger" list="l-ledgers" placeholder="name in the trial balance" style="width:210px"></label>
+        <datalist id="l-ledgers"></datalist>
+      </div>
+      <div class="row filters">
+        <label>Sanctioned limit (₹) <input type="text" id="l-limit" inputmode="decimal" style="width:140px" autocomplete="off"></label>
+        <label>Rate (%) <input type="text" id="l-rate" inputmode="decimal" style="width:70px" autocomplete="off"></label>
+        <label>EMI status <select id="l-emi"><option value="regular">Regular</option><option value="overdue">Overdue</option><option value="restructured">Restructured</option></select></label>
+        <label>Overdue (₹) <input type="text" id="l-overdue" inputmode="decimal" placeholder="0.00" style="width:120px" autocomplete="off"></label>
+        <label>Security <input type="text" id="l-security" maxlength="400" style="width:280px"></label>
+        <button type="button" class="primary" id="l-add" disabled>Save facility</button>
+      </div>
+    </details>
+    <div class="muted" id="l-hint"></div>
+  </div>
+  <div class="scroll">
+    <table id="l-table">
+      <thead><tr><th>Lender / account</th><th>Type</th><th>Ledger</th><th class="num">Sanctioned limit</th><th class="num">Live book balance</th><th class="num">Used</th><th>Rate</th><th>Security</th><th>EMI</th><th>Flags</th><th class="no-print"></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card">
+  <h2>LFAR checklist</h2>
+  <p class="muted">Each line shows a live figure from the books. Choose a status, add your remarks, and save. An exception needs remarks. Saved changes are logged with your name.</p>
+  <div class="scroll">
+    <table id="c-table">
+      <thead><tr><th>Checkpoint</th><th>Live figure</th><th>Status</th><th>Auditor remarks</th><th class="no-print"></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/static/js/lfar.js"></script>{% endblock %}

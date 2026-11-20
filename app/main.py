@@ -60,6 +60,11 @@ def page_issues(request: Request):
     return templates.TemplateResponse(request, "issues.html", {"page": "issues"})
 
 
+@app.get("/lfar", response_class=HTMLResponse, include_in_schema=False)
+def page_lfar(request: Request):
+    return templates.TemplateResponse(request, "lfar.html", {"page": "lfar"})
+
+
 @app.get("/reconciliation", response_class=HTMLResponse, include_in_schema=False)
 def page_recon(request: Request):
     return templates.TemplateResponse(request, "reconciliation.html", {"page": "recon"})

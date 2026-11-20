@@ -8,7 +8,7 @@ from app.db import tx
 from app.jsonutil import json_response
 from app.security import current_user, require
 from app.services import (adjustments_service, audit_service, checks_service, exceptions_service, issues_service, locking,
-                          fd_service, gstr9c_service, mapping_service, materiality_service, notes_service, pack_service, ratios_service, reconciliation_service, signoff_service, statement_service, tds_service, udin_service,
+                          fd_service, gstr9c_service, lfar_service, mapping_service, materiality_service, notes_service, pack_service, ratios_service, reconciliation_service, signoff_service, statement_service, tds_service, udin_service,
                           tb_import, working_papers_service)
 
 router = APIRouter(prefix="/api")
@@ -531,6 +531,55 @@ def add_gstr9c(engagement_id: int, body: Gstr9cIn, user: dict = Depends(require(
 def delete_gstr9c(engagement_id: int, row_id: int, user: dict = Depends(require("gstr9c.edit"))):
     with tx(user["id"]) as cur:
         return json_response(gstr9c_service.delete_row(cur, user, engagement_id, row_id))
+
+
+# ---- T-24 LFAR assistant ---------------------------------------------------------------------------------------
+class LoanIn(BaseModel):
+    lender_name: str | None = None
+    facility_type: str | None = None
+    account_number: str | int | None = None
+    ledger_code: str | None = None
+    sanctioned_limit: str | int | float | None = None
+    interest_rate: str | int | float | None = None
+    security_details: str | None = None
+    emi_status: str | None = None
+    overdue_amount: str | int | float | None = None
+
+
+class LfarItemIn(BaseModel):
+    status: str | None = None
+    auditor_remarks: str | None = None
+
+
+@router.get("/engagements/{engagement_id}/lfar")
+def get_lfar(engagement_id: int):
+    with tx(1) as cur:                                   # the first visit seeds the standard checkpoints (attributed to SYSTEM)
+        return json_response(lfar_service.get(cur, engagement_id))
+
+
+@router.post("/engagements/{engagement_id}/lfar/loans/import")
+async def import_lfar_loans(engagement_id: int, file: UploadFile = File(...), user: dict = Depends(require("lfar.edit"))):
+    data = await _upload(file)
+    with tx(user["id"]) as cur:
+        return json_response(lfar_service.import_loans(cur, user, engagement_id, file.filename or "upload", data))
+
+
+@router.post("/engagements/{engagement_id}/lfar/loans")
+def add_lfar_loan(engagement_id: int, body: LoanIn, user: dict = Depends(require("lfar.edit"))):
+    with tx(user["id"]) as cur:
+        return json_response(lfar_service.add_loan(cur, user, engagement_id, body.model_dump()))
+
+
+@router.delete("/engagements/{engagement_id}/lfar/loans/{loan_id}")
+def delete_lfar_loan(engagement_id: int, loan_id: int, user: dict = Depends(require("lfar.edit"))):
+    with tx(user["id"]) as cur:
+        return json_response(lfar_service.delete_loan(cur, user, engagement_id, loan_id))
+
+
+@router.patch("/engagements/{engagement_id}/lfar/items/{item_id}")
+def update_lfar_item(engagement_id: int, item_id: int, body: LfarItemIn, user: dict = Depends(require("lfar.edit"))):
+    with tx(user["id"]) as cur:
+        return json_response(lfar_service.update_item(cur, user, engagement_id, item_id, body.status, body.auditor_remarks))
 
 
 # ---- T-14 working papers ---------------------------------------------------------------------------------------

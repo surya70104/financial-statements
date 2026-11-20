@@ -1,8 +1,8 @@
-"""Create the sample workbooks used to try the WP9 modules (TDS/TCS pack, FD register, bank reconciliation, GSTR-9C):
+"""Create the sample workbooks used to try the WP9 modules (TDS/TCS pack, FD register, bank reconciliation, GSTR-9C, LFAR loan schedule):
 
     .\\.venv\\Scripts\\python.exe -m scripts.make_samples
 
-writes samples/tds_tcs_pack.xlsx, fd_register.xlsx, bank_reconciliation.xlsx and gstr9c_reconciliation.xlsx for the pilot (9AND9 DIGISOFT, FY 2026-27).
+writes samples/tds_tcs_pack.xlsx, fd_register.xlsx, bank_reconciliation.xlsx, gstr9c_reconciliation.xlsx and loan_schedule.xlsx for the pilot (9AND9 DIGISOFT, FY 2026-27).
 Parties and banks are ledgers that already exist in sample_data/9and9_pilot_tb_76_ledgers.csv. Amounts are exact to the
 paisa and the accrued interest is calculated with the same function the app uses to verify it.
 """
@@ -124,10 +124,33 @@ def make_gstr():
     wb.save(OUT / "gstr9c_reconciliation.xlsx")
 
 
+LOAN_HEADERS = ["Lender Name", "Facility Type", "Account Number", "Ledger Code", "Sanctioned Limit", "Interest Rate (%)", "Security Details", "EMI Status", "Overdue Amount"]
+LOAN_ROWS = [
+    # Ledger Code is the ledger's name in the trial balance; the balance itself is never in this file (LFAR reads it from the adjusted TB).
+    ("HDFC Bank Ltd", "Term Loan", "50300012345678", "Term Loan - HDFC Bank", "45000000.00", "9.250",
+     "First charge on book debts and current assets; mortgage of office premises; personal guarantee of directors", "regular", "0.00"),
+    ("Kotak Mahindra Prime Ltd", "Vehicle / Equipment Loan", "KMP-VL-228841", "Vehicle Loan", "2500000.00", "8.900", "Hypothecation of the financed vehicles", "regular", "0.00"),
+    ("Directors (Mr. A. Rao)", "Unsecured Loan", "UL-DIR-001", "Unsecured Loan - Directors", "20000000.00", "6.000", "Unsecured; repayable on demand; subordinated to bank dues", "regular", "0.00"),
+    ("Sunrise Finance Pvt Ltd", "Unsecured Loan", "SFPL-0099", "Unsecured Loan - Others", "4000000.00", "12.000", "Unsecured; no security given", "overdue", "350000.00"),
+]
+
+
+def make_loans():
+    wb, ws = _sheet("Loan_Schedule", LOAN_HEADERS, [26, 26, 20, 28, 18, 14, 70, 12, 16])
+    for lender, kind, number, ledger, limit, rate, security, emi, overdue in LOAN_ROWS:
+        ws.append([lender, kind, number, ledger, float(limit), float(rate), security, emi, float(overdue)])
+    for r in ws.iter_rows(min_row=2):
+        r[2].number_format = "@"
+        r[4].number_format = r[8].number_format = "#,##0.00"
+        r[5].number_format = "0.000"
+    wb.save(OUT / "loan_schedule.xlsx")
+
+
 if __name__ == "__main__":
     OUT.mkdir(exist_ok=True)
     make_tds()
     make_fd()
     make_recon()
     make_gstr()
-    print(f"Wrote 4 workbooks to {OUT}: tds_tcs_pack ({len(TDS_ROWS)} rows), fd_register ({len(FD_ROWS)}), bank_reconciliation ({len(RECON_ROWS)}), gstr9c_reconciliation ({len(GSTR_ROWS)})")
+    make_loans()
+    print(f"Wrote 5 workbooks to {OUT}: tds_tcs_pack ({len(TDS_ROWS)} rows), fd_register ({len(FD_ROWS)}), bank_reconciliation ({len(RECON_ROWS)}), gstr9c_reconciliation ({len(GSTR_ROWS)}), loan_schedule ({len(LOAN_ROWS)})")
