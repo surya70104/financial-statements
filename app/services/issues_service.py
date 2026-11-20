@@ -13,7 +13,7 @@ from decimal import Decimal, InvalidOperation
 
 from fastapi import HTTPException
 
-from app.services import audit_service
+from app.services import audit_service, locking
 
 _UPSERT_CHECKS = """
 INSERT INTO exceptions (engagement_id, source, reference_id, cause_code, title, detail, amount, fingerprint)
@@ -55,7 +55,7 @@ def sync_check_issues(cur, engagement_id: int) -> None:
 
 def open_counts(cur, engagement_id: int) -> dict:
     cur.execute("""SELECT count(*) FILTER (WHERE status = 'open') AS open, count(*) FILTER (WHERE status = 'cleared') AS cleared,
-                          count(*) AS total FROM exceptions WHERE engagement_id = %s""", (engagement_id,))
+                          count(*) FILTER (WHERE status = 'approved') AS approved, count(*) AS total FROM exceptions WHERE engagement_id = %s""", (engagement_id,))
     return cur.fetchone()
 
 
@@ -74,16 +74,19 @@ def list_issues(cur, engagement_id: int, source: str | None = None, status: str 
     if not cur.fetchone():
         raise HTTPException(404, "Engagement not found.")
     cur.execute("""SELECT source, status, count(*) AS n FROM exceptions WHERE engagement_id = %s GROUP BY source, status""", (engagement_id,))
-    by_source: dict = {s: {"open": 0, "cleared": 0} for s in ("check", "mapping", "manual", "materiality", "gstr9c")}
+    by_source: dict = {s: {"open": 0, "cleared": 0} for s in ("check", "mapping", "manual", "materiality", "gstr9c", "reconciliation", "udin")}
     for r in cur.fetchall():
         by_source.setdefault(r["source"], {"open": 0, "cleared": 0})[r["status"]] = r["n"]
     cur.execute("""SELECT x.id, x.source, x.reference_id, x.cause_code, c.label AS cause, x.title, x.detail, x.amount, x.status,
                           x.occurrences, x.first_seen_at, x.last_seen_at, x.cleared_at, x.cleared_by_system,
-                          x.clear_reason AS resolution_note, cu.full_name AS cleared_by_name, cr.full_name AS created_by_name
+                          x.clear_reason AS resolution_note, cu.full_name AS cleared_by_name, cr.full_name AS created_by_name,
+                          x.owner_id, ou.full_name AS owner_name, x.approved_by, au.full_name AS approved_by_name, x.approved_at,
+                          x.approval_reason AS approval_note, x.is_above_materiality
                      FROM exceptions x JOIN exception_causes c ON c.code = x.cause_code
                      LEFT JOIN users cu ON cu.id = x.cleared_by LEFT JOIN users cr ON cr.id = x.created_by
+                     LEFT JOIN users ou ON ou.id = x.owner_id LEFT JOIN users au ON au.id = x.approved_by
                     WHERE x.engagement_id = %(e)s AND (%(s)s::text IS NULL OR x.source = %(s)s) AND (%(t)s::text IS NULL OR x.status = %(t)s)
-                    ORDER BY (x.status = 'open') DESC, CASE x.source WHEN 'check' THEN 0 WHEN 'manual' THEN 1 WHEN 'materiality' THEN 2 WHEN 'gstr9c' THEN 3 ELSE 4 END, x.id""",
+                    ORDER BY (x.status = 'open') DESC, CASE x.source WHEN 'check' THEN 0 WHEN 'manual' THEN 1 WHEN 'materiality' THEN 2 WHEN 'gstr9c' THEN 3 WHEN 'reconciliation' THEN 4 WHEN 'udin' THEN 5 ELSE 6 END, x.id""",
                 {"e": engagement_id, "s": source, "t": status})
     items = cur.fetchall()                                   # read before the cursor is reused by the queries below
     totals = open_counts(cur, engagement_id)
@@ -135,3 +138,46 @@ def clear_manual(cur, user: dict, engagement_id: int, issue_id: int, note: str |
     audit_service.event(cur, engagement_id, "ISSUE_CLEARED", {"issue_id": issue_id, "title": issue["title"]},
                         entity_table="exceptions", entity_id=str(issue_id), reason=note)
     return {"id": issue_id, "status": "cleared", "resolution_note": note}
+
+
+def _load(cur, engagement_id: int, issue_id: int) -> dict:
+    cur.execute("SELECT id, source, status, title, owner_id FROM exceptions WHERE id = %s AND engagement_id = %s FOR UPDATE", (issue_id, engagement_id))
+    issue = cur.fetchone()
+    if not issue:
+        raise HTTPException(404, "Issue not found in this engagement.")
+    return issue
+
+
+def assign(cur, user: dict, engagement_id: int, issue_id: int, owner_id: int | None) -> dict:
+    """Give an issue an owner (or none). Any working user can do it; frozen once the engagement is signed off."""
+    locking.assert_unlocked(cur, engagement_id)
+    issue = _load(cur, engagement_id, issue_id)
+    name = None
+    if owner_id is not None:
+        cur.execute("""SELECT u.full_name FROM users u WHERE u.id = %s AND u.is_active AND u.id <> 1
+                          AND EXISTS (SELECT 1 FROM user_roles r WHERE r.user_id = u.id AND r.role_code IN ('MAKER', 'CHECKER', 'PARTNER'))""", (owner_id,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(400, "Choose one of the team members as the owner.")
+        name = row["full_name"]
+    cur.execute("UPDATE exceptions SET owner_id = %s WHERE id = %s", (owner_id, issue_id))
+    audit_service.event(cur, engagement_id, "ISSUE_ASSIGNED", {"issue_id": issue_id, "title": issue["title"], "owner": name or "Unassigned",
+                                                                "assigned_by": user["full_name"]}, entity_table="exceptions", entity_id=str(issue_id))
+    return {"id": issue_id, "owner_id": owner_id, "owner_name": name}
+
+
+def approve(cur, user: dict, engagement_id: int, issue_id: int, note: str | None) -> dict:
+    """A Checker or Partner accepts an open issue with a reason. An approved issue no longer blocks sign-off; it re-opens by itself if the
+    underlying facts change (the system upserts re-open it when the fingerprint differs)."""
+    locking.assert_unlocked(cur, engagement_id)
+    issue = _load(cur, engagement_id, issue_id)
+    note = (note or "").strip()
+    if not note:
+        raise HTTPException(400, "An approval note is required.")
+    if issue["status"] != "open":
+        raise HTTPException(409, f"Only an open issue can be approved (this one is {issue['status']}).")
+    cur.execute("""UPDATE exceptions SET status = 'approved', approved_by = %s, approved_at = now(), approval_reason = %s,
+                          cleared_by = NULL, cleared_by_system = FALSE, cleared_at = NULL, clear_reason = NULL WHERE id = %s""", (user["id"], note, issue_id))
+    audit_service.event(cur, engagement_id, "ISSUE_APPROVED", {"issue_id": issue_id, "title": issue["title"], "source": issue["source"], "approved_by": user["full_name"]},
+                        entity_table="exceptions", entity_id=str(issue_id), reason=note)
+    return {"id": issue_id, "status": "approved", "approval_note": note}

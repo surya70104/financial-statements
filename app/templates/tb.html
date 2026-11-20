@@ -32,6 +32,30 @@
   <p class="muted" id="unit-note"></p>
 </section>
 
+<section class="card" id="py-card">
+  <div class="row between"><h2>Prior-year comparatives</h2><span id="py-summary" aria-live="polite"></span></div>
+  <p class="muted">The comparative column of the Balance Sheet, Profit &amp; Loss and Notes comes from each ledger's <b>prior-year closing balance</b>. Enter it the way it is normally shown: assets and expenses as positive debits, liabilities, income and equity as positive credits (a minus sign is the opposite side). The previous year's profit is added to its reserves automatically. Saving updates the statements, notes, checks and materiality at once.</p>
+  <div class="row filters">
+    <label>Upload Excel / CSV <input type="file" id="py-file" accept=".xlsx,.csv"></label>
+    <button type="button" id="py-upload" disabled>Upload</button>
+    <span class="muted">Two columns: <code>Ledger Name</code>, <code>Prior Year Amount</code>. The name must match the trial balance.</span>
+  </div>
+  <div id="py-errors"></div>
+  <details>
+    <summary>Enter or edit prior-year balances ledger by ledger</summary>
+    <div class="row between" style="margin-top:8px">
+      <input type="search" id="py-filter" placeholder="Filter by ledger or group&hellip;">
+      <div class="row"><span class="muted" id="py-hint"></span><button type="button" class="primary" id="py-save" disabled>Save changes</button></div>
+    </div>
+    <div class="scroll">
+      <table id="py-table">
+        <thead><tr><th>Ledger</th><th>Tally group</th><th>Normal side</th><th class="num">Current closing</th><th class="num">Prior-year balance</th><th>Schedule III line</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </details>
+</section>
+
 <section class="card">
   <h2>Upload history</h2>
   <div class="scroll">
@@ -44,4 +68,4 @@
   </div>
 </section>
 {% endblock %}
-{% block scripts %}<script src="/static/js/tb.js"></script>{% endblock %}
+{% block scripts %}<script src="/static/js/tb.js"></script><script src="/static/js/comparatives.js"></script>{% endblock %}

@@ -77,8 +77,26 @@ def build(cur, engagement_id: int, bs: dict | None = None, pnl: dict | None = No
                     "previous_total": _q(line["previous"]), "difference": diff, "ties": diff == 0})
     failing = [n for n in out if not n["ties"]]
     return {"current_label": bs["current_label"], "previous_label": bs["previous_label"],
-            "notes": out,
+            "notes": out, "fd_note": fd_note(cur, engagement_id),
             "tie_summary": {"notes": len(out), "tying": len(out) - len(failing),
                             "total_absolute_difference": _q(sum((abs(n["difference"]) for n in failing), ZERO)),
                             "failing": [{"note_no": n["note_no"], "title": n["title"], "difference": n["difference"]} for n in failing]},
             "warnings": bs["warnings"]}
+
+
+def fd_note(cur, engagement_id: int) -> dict:
+    """The dedicated Fixed Deposits & Accrued Interest schedule, read straight from the FD register. Totals count POSTED FDs only (those are in
+    the statements); drafts are listed but marked as not yet posted."""
+    cur.execute("""SELECT f.id, f.bank_name, f.fd_number, f.principal_amount, f.interest_rate, f.start_date, f.maturity_date, f.maturity_classification,
+                          f.accrued_interest, f.schedule_line_code, f.status, tl.label AS line_label
+                     FROM fixed_deposit_register f LEFT JOIN template_lines tl ON tl.code = f.schedule_line_code
+                          AND tl.template_id = (SELECT template_id FROM engagements WHERE id = f.engagement_id)
+                    WHERE f.engagement_id = %s ORDER BY f.maturity_classification DESC, f.maturity_date, f.id""", (engagement_id,))
+    rows = cur.fetchall()
+    posted = [r for r in rows if r["status"] == "posted"]
+    total = lambda sel, key: _q(sum((r[key] for r in sel), ZERO))
+    return {"title": "Fixed deposits and accrued interest", "rows": rows,
+            "totals": {"current_principal": total([r for r in posted if r["maturity_classification"] == "current"], "principal_amount"),
+                       "non_current_principal": total([r for r in posted if r["maturity_classification"] == "non_current"], "principal_amount"),
+                       "total_principal": total(posted, "principal_amount"), "accrued_interest": total(posted, "accrued_interest")},
+            "posted_count": len(posted), "draft_count": len(rows) - len(posted)}

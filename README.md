@@ -4,7 +4,7 @@ A local web app for Chartered Accountants to turn a Tally trial balance into Sch
 
 Pilot client: **9AND9 DIGISOFT INSIGHTS PRIVATE LIMITED**, FY 2026-27, Statutory Audit. The spec is `Financial_Statements_Developer_Task_Brief.docx` (not in this repo).
 
-**Status:** all three passes are built and ready for review: Pass 1 (Steps 1-5), Pass 2 (Steps 6-9) and Pass 3 (Steps 10-13, the WP9 connected modules). The product questions Q1-Q7 below are still open and affect labels, one check and the ratio formulas, not the build.
+**Status:** all three passes are built and ready for review: Pass 1 (Steps 1-5), Pass 2 (Steps 6-9), Pass 3 (Steps 10-13, the WP9 connected modules) and Step 14, which closes the acceptance-criteria gaps found when the build was audited against the brief. The product questions Q1-Q7 below are still open and affect labels, one check and the ratio formulas, not the build.
 
 ## Tech stack
 
@@ -48,7 +48,19 @@ Core rules: every figure is calculated from the adjusted trial balance and never
 | 12 | T-21 GSTR-9C | Books against GSTR-9C per GST head and table. Every non-zero difference is one issue in the tracker (source GSTR-9C) and clears itself at 0.00. |
 | 13 | T-24 LFAR assistant | Loan schedule (limit, rate, security, EMI status) matched to ledgers by name, with the book balance read live from the adjusted TB (no second copy of any ledger), limit-overrun and overdue flags, and an eight-point LFAR checklist with live figures, status and remarks. Printable. |
 
-Screens: Trial Balance & Import, Mapping, Adjustments, Checks, Balance Sheet, Profit & Loss, Working Papers, Issues, TDS / TCS, FD Register, Reconciliation, GSTR-9C, LFAR, Materiality, Sign-Off, UDIN, Audit Pack, Audit Trail, Notes and Ratios.
+### Step 14: closing the gaps against the brief
+| Brief task | What was missing | What is there now |
+|---|---|---|
+| T-12 Issue Tracker | Grouping by cause, an "approved" status and an owner | **Group by cause** toggle with counts; **Approve** (Checker or Partner, note required, Maker gets 403) so an approved issue no longer blocks sign-off; an **owner** on every issue |
+| T-18 UDIN dashboard | Signed reports without a UDIN were not "listed as exceptions" | Each signed version with no UDIN is one issue (`udin:v<n>`); recording the UDIN clears it, revoking re-opens it, and re-opening the engagement withdraws it |
+| T-16 Audit Pack | No out-of-date flag | The pack records the data revision it was built or exported at, and shows a warning with a **Rebuild / Refresh Snapshot** button once anything changes |
+| T-23 Materiality | Only year-on-year variances were flagged | GSTR-9C and reconciliation differences above overall materiality get an **ABOVE MATERIALITY** badge in the tracker and are listed on the Materiality screen |
+| T-22 FD register | No dedicated FD note | A "Fixed deposits and accrued interest" schedule on the Notes screen, read from the FD register (posted FDs in the totals, drafts marked) |
+| Comparatives | No way to enter prior-year figures | **Prior-year comparatives** panel on the Trial Balance tab: upload `Ledger Name, Prior Year Amount` or edit ledger by ledger. The statements, notes, checks and materiality update at once |
+
+The navigation tabs are in audit-workflow order on a single row.
+
+Screens: Trial Balance & Import (with prior-year comparatives), Mapping, Materiality, Adjustments, TDS / TCS, FD Register, Reconciliation, GSTR-9C, Balance Sheet, Profit & Loss, Notes, Ratios, Checks, Issues, Working Papers, LFAR, Audit Pack, Sign-Off, UDIN and Audit Trail.
 
 ## Local setup
 
@@ -61,7 +73,7 @@ Requirements: Windows PowerShell, Python 3.11+, Node.js, and a running PostgreSQ
 DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/ca_workbench_fs
 ```
 
-3. Install, migrate and start. The first run creates `.venv`, installs the dependencies and applies migrations `001`-`013`:
+3. Install, migrate and start. The first run creates `.venv`, installs the dependencies and applies migrations `001`-`014`:
 
 ```powershell
 cd D:\FINANCIAL-STATEMENTS
@@ -76,7 +88,7 @@ Other commands:
 .\.venv\Scripts\python.exe -m scripts.init_db --status   # list applied and pending migrations
 .\.venv\Scripts\python.exe -m scripts.init_db            # apply pending migrations only
 .\.venv\Scripts\python.exe -m scripts.make_samples       # regenerate the sample workbooks in samples\
-.\.venv\Scripts\python.exe -m pytest -q                  # 80 tests
+.\.venv\Scripts\python.exe -m pytest -q                  # 86 tests
 node tests/test_money.js                                 # 19 money-format checks
 ```
 
@@ -87,8 +99,8 @@ Pick the user from the switcher in the top bar. There are no passwords yet; real
 
 | User | Role | Can do |
 |---|---|---|
-| Maya Maker (Preparer) | MAKER | Import and map the TB, draft adjustments, raise and clear issues, attach working papers, enter TDS/TCS, FD, reconciliation, GSTR-9C and LFAR data, propose reconciliation adjustments, export the pack |
-| Chetan Checker (Reviewer) | CHECKER | Approve adjustments, review working papers, run checks, set materiality, post the TDS/TCS and FD registers, plus the Maker's data entry |
+| Maya Maker (Preparer) | MAKER | Import and map the TB, enter prior-year comparatives, draft adjustments, assign issue owners, raise and clear issues, attach working papers, enter TDS/TCS, FD, reconciliation, GSTR-9C and LFAR data, propose reconciliation adjustments, export the pack |
+| Chetan Checker (Reviewer) | CHECKER | Approve adjustments and issues, review working papers, run checks, set materiality, post the TDS/TCS and FD registers, plus the Maker's data entry |
 | Priya Partner | PARTNER | Everything above, plus sign off, reopen for revision, and record or revoke UDINs |
 
 ### Test files
@@ -120,9 +132,10 @@ The build is complete for review. These questions from the brief are still open;
 | Q7 | Which ratio definitions? | Formulas on the Ratios tab | Provisional formulas, shown beside each ratio. |
 
 ## Known limitations
-- There is no screen to enter **prior-year comparatives**; they are seeded as 0.00. Materiality therefore flags nothing on the pilot until comparatives exist (the tests set them in the database).
+- **Prior-year comparatives** are 0.00 until you enter them (Trial Balance tab). Until then the comparative columns are empty and materiality flags no year-on-year variance.
 - Posting the TDS/TCS and FD registers **adds** to the trial balance, so post only items that are not already booked.
 - The browser's print preview and PDF output have not been checked by eye.
 - The locked, reopened and v2 sign-off screens, and the upload-and-post flows of Steps 11-13, are covered by API tests but have not all been seen in the browser.
 - Reversals of reversals build long nested descriptions (cosmetic).
+- The FD note lists the register's FDs; the statements themselves show FDs on their Schedule III lines (and interest in Other income), not as a separate statement line.
 - Sign-in uses the `X-User-Id` dev switcher, not real authentication.

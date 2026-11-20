@@ -28,6 +28,26 @@
     return d;
   }
 
+  function fdNote(fd) {
+    const el = document.getElementById("fd-note");
+    const dmy = s => s.split("-").reverse().join("-");
+    const rows = fd.rows.map(r => h("tr", { class: r.status === "posted" ? "" : "muted" },
+      h("td", {}, r.bank_name), h("td", {}, r.fd_number), h("td", {}, r.maturity_classification === "current" ? "Current" : "Non-current"),
+      h("td", { class: "num" }, r.maturity_classification === "current" ? App.money(r.principal_amount) : "—"),
+      h("td", { class: "num" }, r.maturity_classification === "non_current" ? App.money(r.principal_amount) : "—"),
+      h("td", { class: "num" }, r.interest_rate + " %"), h("td", {}, dmy(r.maturity_date)), h("td", { class: "num" }, App.money(r.accrued_interest)),
+      h("td", {}, r.status === "posted" ? "Posted" : "Draft: not in the statements")));
+    const t = fd.totals;
+    el.replaceChildren(h("h2", {}, "Supporting schedule: Fixed deposits and accrued interest"),
+      h("p", { class: "muted" }, "Read from the FD register. Totals count posted FDs only; they are the FDs inside the statements. Current FDs sit on the line chosen in the register (usually Cash and cash equivalents), non-current on Other non-current assets, and accrued interest on Other current assets with the income in Other income."),
+      fd.rows.length ? h("div", { class: "scroll" }, h("table", {},
+        h("thead", {}, h("tr", {}, ...["Bank", "FD number", "Class", "Current principal", "Non-current principal", "Rate", "Maturity", "Accrued interest", "Status"].map((t_, i) => h("th", { class: [3, 4, 7].includes(i) ? "num" : "" }, t_)))),
+        h("tbody", {}, rows),
+        h("tfoot", {}, h("tr", { class: "total" }, h("td", { colspan: 3 }, "Total (posted FDs)"), h("td", { class: "num" }, App.money(t.current_principal)),
+          h("td", { class: "num" }, App.money(t.non_current_principal)), h("td", {}), h("td", {}), h("td", { class: "num" }, App.money(t.accrued_interest)), h("td", {}, App.money(t.total_principal) + " principal")))))
+        : h("p", { class: "muted" }, "No fixed deposits in the register. Add them on the FD Register tab."));
+  }
+
   function render() {
     document.getElementById("notes-unit").textContent = "Amounts in " + App.unitLabel();
     const t = data.tie_summary;
@@ -37,6 +57,7 @@
     box.hidden = !w.unmapped_ledgers;
     if (w.unmapped_ledgers) box.replaceChildren(h("b", {}, "⚠ " + w.unmapped_ledgers + " ledger(s) not mapped and excluded."), " ", h("a", { href: "/mapping" }, "Go to Mapping"));
     document.getElementById("notes-list").replaceChildren(...data.notes.map(noteCard));
+    fdNote(data.fd_note);
   }
 
   App.ready.then(async () => {

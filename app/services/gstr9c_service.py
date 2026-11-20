@@ -9,7 +9,7 @@ from decimal import Decimal
 
 from fastapi import HTTPException
 
-from app.services import audit_service, locking, register_io as io
+from app.services import audit_service, locking, materiality_service, register_io as io
 
 HEADS = ("CGST", "SGST", "IGST", "CESS")
 ZERO = Decimal("0.00")
@@ -109,6 +109,7 @@ def sync_issues(cur, engagement_id: int) -> dict:
 
 def _finish(cur, engagement_id: int, event: str, extra: dict) -> None:
     s = sync_issues(cur, engagement_id)
+    materiality_service.sync_difference_issues(cur, engagement_id)           # flag the ones above overall materiality
     cur.execute("SELECT count(*) FILTER (WHERE difference_amount = 0) AS matched, count(*) FILTER (WHERE difference_amount <> 0) AS differing, "
                 "coalesce(sum(difference_amount), 0) AS net FROM gstr9c_reconciliations WHERE engagement_id = %s", (engagement_id,))
     t = cur.fetchone()

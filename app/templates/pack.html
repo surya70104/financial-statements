@@ -7,9 +7,11 @@
     <div class="row">
       <button type="button" class="primary" id="pack-print">🖨 Print / Export Pack</button>
       <button type="button" id="pack-json">⬇ Download JSON Snapshot</button>
+      <button type="button" id="pack-build">↻ Rebuild / Refresh Snapshot</button>
     </div>
   </div>
 </section>
+<div id="pack-stale" class="no-print"></div>
 <div id="pack"><p class="muted">Loading the pack&hellip;</p></div>
 {% endblock %}
 {% block scripts %}<script src="/static/js/pack.js"></script>{% endblock %}

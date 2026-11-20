@@ -40,5 +40,16 @@
     </table>
   </div>
 </section>
+
+<section class="card">
+  <div class="row between"><h2>Differences above materiality: GSTR-9C and reconciliation</h2><span class="muted" id="dif-count"></span></div>
+  <p class="muted">Open GSTR-9C differences and reconciliation items that still need an entry. Each one above overall materiality is flagged <b>ABOVE MATERIALITY</b> in the <a href="/issues">Issue Tracker</a>.</p>
+  <div class="scroll">
+    <table id="dif-table">
+      <thead><tr><th>Source</th><th>Difference</th><th class="num">Amount</th><th class="num">Above materiality by</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
 {% endblock %}
 {% block scripts %}<script src="/static/js/materiality.js"></script>{% endblock %}

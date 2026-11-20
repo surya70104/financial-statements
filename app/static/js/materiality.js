@@ -53,7 +53,7 @@
     else if (!p) why = calc ? "Choose a benchmark with a positive amount and enter a percentage between 0.01 and 100." : "Enter an overall materiality amount (up to 2 decimals).";
     else if (p.perf > p.overall || p.triv > p.overall) why = "Performance materiality and the trivial threshold cannot exceed overall materiality.";
     $("m-save").disabled = !!why; $("m-hint").textContent = why;
-    renderTable(p);
+    renderTable(p); renderDifferences(p);
   }
 
   function renderTable(p) {
@@ -67,6 +67,16 @@
       h("td", {}, v.label), h("td", {}, v.note_no ? "Note " + v.note_no : "—"), h("td", { class: "num" }, App.money(v.current)), h("td", { class: "num" }, App.money(v.previous)),
       h("td", { class: "num" }, App.money(v.change)), h("td", { class: "num" }, Money.exact(paiseStr(Money.toPaise(v.variance) - threshold)))))
       : [h("tr", {}, h("td", { colspan: 6, class: "muted" }, threshold === null ? "—" : "No line is above materiality."))]));
+  }
+
+  function renderDifferences(p) {
+    const m = data.materiality, threshold = p ? p.overall : (m ? Money.toPaise(m.overall_materiality) : null);
+    const rows = threshold === null ? [] : data.differences.filter(d => Money.toPaise(d.variance) > threshold);
+    $("dif-count").textContent = threshold === null ? data.differences.length + " open difference(s)" : rows.length + " of " + data.differences.length + " above " + Money.exact(paiseStr(threshold)) + (p ? " (preview)" : "");
+    $("dif-table").querySelector("tbody").replaceChildren(...(rows.length ? rows.map(d => h("tr", {},
+      h("td", {}, h("span", { class: "chip " + (d.source === "gstr9c" ? "bad" : "warn") }, d.source === "gstr9c" ? "GSTR-9C" : "RECONCILIATION")),
+      h("td", { class: "wrap" }, d.label), h("td", { class: "num" }, Money.exact(d.difference)), h("td", { class: "num" }, Money.exact(paiseStr(Money.toPaise(d.variance) - threshold)))))
+      : [h("tr", {}, h("td", { colspan: 4, class: "muted" }, threshold === null ? "Set materiality to see which differences exceed it." : "No open difference is above materiality."))]));
   }
 
   async function load() {

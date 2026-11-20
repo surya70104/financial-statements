@@ -8,7 +8,7 @@ from app.db import tx
 from app.jsonutil import json_response
 from app.security import current_user, require
 from app.services import (adjustments_service, audit_service, checks_service, exceptions_service, issues_service, locking,
-                          fd_service, gstr9c_service, lfar_service, mapping_service, materiality_service, notes_service, pack_service, ratios_service, reconciliation_service, signoff_service, statement_service, tds_service, udin_service,
+                          fd_service, gstr9c_service, lfar_service, mapping_service, prior_year_service, materiality_service, notes_service, pack_service, ratios_service, reconciliation_service, signoff_service, statement_service, tds_service, udin_service,
                           tb_import, working_papers_service)
 
 router = APIRouter(prefix="/api")
@@ -269,6 +269,26 @@ def get_issues(engagement_id: int, source: str | None = Query(None), status: str
 def create_issue(engagement_id: int, body: IssueIn, user: dict = Depends(require("issues.create"))):
     with tx(user["id"]) as cur:
         return json_response(issues_service.create_manual(cur, user, engagement_id, body.title, body.detail, body.amount))
+
+
+class AssignIn(BaseModel):
+    owner_id: int | None = None
+
+
+class ApproveIn(BaseModel):
+    approval_note: str | None = None
+
+
+@router.patch("/engagements/{engagement_id}/issues/{issue_id}/assign")
+def assign_issue(engagement_id: int, issue_id: int, body: AssignIn, user: dict = Depends(require("issues.assign"))):
+    with tx(user["id"]) as cur:
+        return json_response(issues_service.assign(cur, user, engagement_id, issue_id, body.owner_id))
+
+
+@router.post("/engagements/{engagement_id}/issues/{issue_id}/approve")
+def approve_issue(engagement_id: int, issue_id: int, body: ApproveIn, user: dict = Depends(require("issues.approve"))):
+    with tx(user["id"]) as cur:
+        return json_response(issues_service.approve(cur, user, engagement_id, issue_id, body.approval_note))
 
 
 @router.post("/engagements/{engagement_id}/issues/{issue_id}/clear")
@@ -582,6 +602,35 @@ def update_lfar_item(engagement_id: int, item_id: int, body: LfarItemIn, user: d
         return json_response(lfar_service.update_item(cur, user, engagement_id, item_id, body.status, body.auditor_remarks))
 
 
+# ---- prior-year comparatives -----------------------------------------------------------------------------------
+class PriorYearItem(BaseModel):
+    ledger_id: int
+    amount: str | int | float | None = None
+
+
+class PriorYearIn(BaseModel):
+    items: list[PriorYearItem]
+
+
+@router.get("/engagements/{engagement_id}/prior-year")
+def get_prior_year(engagement_id: int):
+    with tx() as cur:
+        return json_response(prior_year_service.list_rows(cur, engagement_id))
+
+
+@router.post("/engagements/{engagement_id}/prior-year/import")
+async def import_prior_year(engagement_id: int, file: UploadFile = File(...), user: dict = Depends(require("prior_year.edit"))):
+    data = await _upload(file)
+    with tx(user["id"]) as cur:
+        return json_response(prior_year_service.import_file(cur, user, engagement_id, file.filename or "upload", data))
+
+
+@router.post("/engagements/{engagement_id}/prior-year")
+def save_prior_year(engagement_id: int, body: PriorYearIn, user: dict = Depends(require("prior_year.edit"))):
+    with tx(user["id"]) as cur:
+        return json_response(prior_year_service.save(cur, user, engagement_id, [i.model_dump() for i in body.items]))
+
+
 # ---- T-14 working papers ---------------------------------------------------------------------------------------
 class WorkingPaperIn(BaseModel):
     target_type: str
@@ -625,7 +674,13 @@ class PackExportIn(BaseModel):
 @router.get("/engagements/{engagement_id}/pack")
 def get_pack(engagement_id: int):
     with tx() as cur:
-        return json_response(pack_service.build(cur, engagement_id))
+        return json_response({**pack_service.build(cur, engagement_id), **pack_service.freshness(cur, engagement_id)})
+
+
+@router.post("/engagements/{engagement_id}/pack/build")
+def build_pack(engagement_id: int, user: dict = Depends(require("pack.export"))):
+    with tx(user["id"]) as cur:
+        return json_response(pack_service.build_snapshot(cur, user, engagement_id))
 
 
 @router.post("/engagements/{engagement_id}/pack/export")

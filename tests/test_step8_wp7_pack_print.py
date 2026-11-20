@@ -34,7 +34,8 @@ def test_pack_matches_the_live_figures(client, eid, pending_q1):
     pack = client.get(f"/api/engagements/{eid}/pack")
     assert pack.status_code == 200, pack.text
     pack = pack.json()
-    assert set(pack) == {"header", "financials", "adjustments", "checks_and_issues", "working_papers"}
+    assert set(pack) == {"header", "financials", "adjustments", "checks_and_issues", "working_papers",
+                         "last_built_revision", "current_revision", "is_stale", "last_built_by", "last_built_at"}     # + the Step 14 freshness fields
 
     # 1. governance header
     hd = pack["header"]
@@ -73,7 +74,8 @@ def test_pack_matches_the_live_figures(client, eid, pending_q1):
     assert all(by_code[c]["status"] == "pass" for c in ("CHK-01", "CHK-02", "CHK-03", "CHK-04", "CHK-05"))
     assert by_code["CHK-06"]["status"] == "fail" and by_code["CHK-06"]["pending_definition"] and "Q1" in by_code["CHK-06"]["message"]
     issues = get(client, eid, "issues")["summary"]
-    assert ci["issues"]["open"] == issues["open"] == 1 and "CHK-06" in ci["issues"]["open_items"][0]["title"]
+    assert ci["issues"]["open"] == issues["open"] == 2                                          # CHK-06, and (Step 14) the signed report v1 that has no UDIN yet
+    assert any("CHK-06" in x["title"] for x in ci["issues"]["open_items"]) and any(x["source"] == "udin" for x in ci["issues"]["open_items"])
     assert ci["issues"]["by_source"] == issues["by_source"]
 
     # 5. working paper coverage

@@ -101,7 +101,39 @@ def log_export(cur, user: dict, engagement_id: int, fmt: str) -> dict:
     eng = cur.fetchone()
     if not eng:
         raise HTTPException(404, "Engagement not found.")
+    mark_built(cur, user, engagement_id)                                   # an export is also a build: the revision is recorded
     summ = checks_service.summary(cur, engagement_id)
     audit_service.event(cur, engagement_id, "AUDIT_PACK_EXPORTED",
                         {"format": fmt, "data_revision": eng["data_revision"], "checks_passing": f"{summ['passed']} of {summ['total']}"})
     return {"logged": True, "event": "AUDIT_PACK_EXPORTED", "format": fmt, "data_revision": eng["data_revision"]}
+
+
+def freshness(cur, engagement_id: int) -> dict:
+    """Has anything changed since the pack was last built or exported? Compares the engagement's data revision with the recorded one."""
+    cur.execute("""SELECT e.data_revision AS current_revision, b.built_at_revision AS last_built_revision, b.built_by, b.built_at
+                     FROM engagements e LEFT JOIN audit_pack_builds b ON b.engagement_id = e.id WHERE e.id = %s""", (engagement_id,))
+    r = cur.fetchone()
+    if not r:
+        raise HTTPException(404, "Engagement not found.")
+    return {"last_built_revision": r["last_built_revision"], "current_revision": r["current_revision"],
+            "is_stale": r["last_built_revision"] is None or r["current_revision"] > r["last_built_revision"],
+            "last_built_by": r["built_by"], "last_built_at": r["built_at"]}
+
+
+def mark_built(cur, user: dict, engagement_id: int) -> dict:
+    cur.execute("SELECT data_revision FROM engagements WHERE id = %s", (engagement_id,))
+    eng = cur.fetchone()
+    if not eng:
+        raise HTTPException(404, "Engagement not found.")
+    cur.execute("""INSERT INTO audit_pack_builds (engagement_id, built_at_revision, built_by) VALUES (%s,%s,%s)
+                   ON CONFLICT (engagement_id) DO UPDATE SET built_at_revision = EXCLUDED.built_at_revision, built_by = EXCLUDED.built_by, built_at = now()""",
+                (engagement_id, eng["data_revision"], user["full_name"][:64]))
+    return eng
+
+
+def build_snapshot(cur, user: dict, engagement_id: int) -> dict:
+    eng = mark_built(cur, user, engagement_id)
+    summ = checks_service.summary(cur, engagement_id)
+    audit_service.event(cur, engagement_id, "AUDIT_PACK_BUILT", {"data_revision": eng["data_revision"], "checks_passing": f"{summ['passed']} of {summ['total']}",
+                                                                 "built_by": user["full_name"]})
+    return {"built": True, **freshness(cur, engagement_id)}

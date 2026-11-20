@@ -82,7 +82,21 @@
         h("ul", {}, ...un.map(u => h("li", {}, (u.target_type === "note" ? "Note: " : "Line: ") + u.label)))) : h("p", {}, "Every statement line and note has a working paper."));
   }
 
+  function renderStale() {
+    const box = document.getElementById("pack-stale");
+    if (!data.is_stale) {
+      box.replaceChildren(h("div", { class: "chip ok" }, "✓ Up to date: built at revision " + data.last_built_revision + (data.last_built_by ? " by " + data.last_built_by : "")));
+      return;
+    }
+    const never = data.last_built_revision === null;
+    box.replaceChildren(h("div", { class: "banner", style: "margin:0 0 12px", role: "alert" },
+      h("b", {}, never ? "⚠ This pack has not been built yet. " : "⚠ This pack is out of date. "),
+      never ? "Rebuild it to record the revision you are about to present." : "The statements or registers changed after it was last built (revision " + data.last_built_revision + ", now " + data.current_revision + ").",
+      " ", h("button", { type: "button", class: "primary", onclick: rebuild }, "Rebuild / Refresh Snapshot")));
+  }
+
   function render() {
+    renderStale();
     document.getElementById("pack").replaceChildren(governance(data.header), financials(data.financials), adjustments(data.adjustments),
       checksAndIssues(data.checks_and_issues), workingPapers(data.working_papers));
   }
@@ -90,13 +104,17 @@
   async function load() { data = await App.api("/api/engagements/" + eid() + "/pack"); render(); }
   const logExport = format => App.api("/api/engagements/" + eid() + "/pack/export", { method: "POST", body: { format } });
 
+  async function rebuild() {
+    try { await App.api("/api/engagements/" + eid() + "/pack/build", { method: "POST" }); await load(); App.toast("Snapshot rebuilt at revision " + data.current_revision + "."); } catch (err) { App.toast(err.message, true); }
+  }
+
   async function printPack() {
-    try { await load(); await logExport("print"); window.print(); } catch (err) { App.toast(err.message, true); }
+    try { await load(); await logExport("print"); await load(); window.print(); } catch (err) { App.toast(err.message, true); }
   }
 
   async function downloadJson() {
     try {
-      await load(); await logExport("json");
+      await load(); await logExport("json"); await load();
       const blob = new Blob([JSON.stringify({ exported_at: new Date().toISOString(), pack: data }, null, 2)], { type: "application/json" });
       const a = h("a", { href: URL.createObjectURL(blob), download: "audit-pack-FY" + data.header.financial_year + ".json" });
       document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
@@ -107,6 +125,7 @@
   App.ready.then(async () => {
     document.getElementById("pack-print").addEventListener("click", printPack);
     document.getElementById("pack-json").addEventListener("click", downloadJson);
+    document.getElementById("pack-build").addEventListener("click", rebuild);
     App.onChange(what => { if (data && what === "unit") render(); });
     await load();
   }).catch(err => App.toast(err.message, true));

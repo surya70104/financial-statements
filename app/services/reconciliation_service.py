@@ -13,7 +13,7 @@ from decimal import Decimal
 
 from fastapi import HTTPException
 
-from app.services import adjustments_service, audit_service, ledger_support, locking, register_io as io
+from app.services import adjustments_service, audit_service, ledger_support, locking, materiality_service, register_io as io
 
 TYPES = ("bank", "party", "other")
 ACTIONS = {"timing_only": "timing_only", "timing": "timing_only", "propose_adjustment": "propose_adjustment", "propose": "propose_adjustment",
@@ -91,6 +91,7 @@ def add_row(cur, user: dict, engagement_id: int, raw: dict) -> dict:
     if _key(r) in _existing(cur, engagement_id):
         raise HTTPException(409, "This item is already in the reconciliation (same account, date, reference and amounts).")
     rid = _insert(cur, user, engagement_id, r)
+    materiality_service.sync_difference_issues(cur, engagement_id)
     audit_service.event(cur, engagement_id, "RECON_ITEM_ADDED", {"item_id": rid, **r}, entity_table="reconciliation_items", entity_id=str(rid))
     return {"id": rid, **r}
 
@@ -121,6 +122,7 @@ def import_file(cur, user: dict, engagement_id: int, filename: str, data: bytes)
         raise HTTPException(422, {"message": f"{len(errors)} row(s) need attention. Nothing was imported.", "errors": errors})
     for r in good:
         _insert(cur, user, engagement_id, r)
+    materiality_service.sync_difference_issues(cur, engagement_id)
     audit_service.event(cur, engagement_id, "RECON_IMPORTED", {"file": filename, "rows": len(good),
                         "needing_adjustment": sum(1 for r in good if r["status"] == "open"), "net_difference": sum((r["difference_amount"] for r in good), ZERO)})
     return {"imported": len(good), "needing_adjustment": sum(1 for r in good if r["status"] == "open"), "file": filename}
@@ -136,6 +138,7 @@ def delete_row(cur, user: dict, engagement_id: int, item_id: int) -> dict:
     if row["proposed_journal_id"]:
         raise HTTPException(409, "This item already has a journal entry. Reverse that entry on the Adjustments tab instead.")
     cur.execute("DELETE FROM reconciliation_items WHERE id = %s", (item_id,))
+    materiality_service.sync_difference_issues(cur, engagement_id)
     audit_service.event(cur, engagement_id, "RECON_ITEM_DELETED", {"item_id": item_id, "account": row["account_name"], "difference": row["difference_amount"]},
                         entity_table="reconciliation_items", entity_id=str(item_id))
     return {"deleted": item_id}
@@ -180,6 +183,7 @@ def propose(cur, user: dict, engagement_id: int) -> dict:
                                             f"Reconciliation ({it['recon_type']}): {it['description']} - {note}", lines, None)
         cur.execute("UPDATE reconciliation_items SET status = 'proposed', proposed_journal_id = %s WHERE id = %s", (entry["id"], it["id"]))
         created.append({"item_id": it["id"], "journal_id": entry["id"], "entry_number": entry["entry_number"]})
+    materiality_service.sync_difference_issues(cur, engagement_id)
     audit_service.event(cur, engagement_id, "RECON_ADJUSTMENTS_PROPOSED",
                         {"items": len(created), "total_difference": sum((i["difference_amount"] for i in items), ZERO),
                          "entry_numbers": [c["entry_number"] for c in created], "proposed_by": user["full_name"]})

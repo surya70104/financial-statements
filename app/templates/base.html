@@ -24,24 +24,24 @@
   <nav class="tabs">
     <a href="/" class="{{ 'active' if page == 'tb' }}">Trial Balance &amp; Import</a>
     <a href="/mapping" class="{{ 'active' if page == 'mapping' }}">Mapping <span class="badge" id="nav-unmapped" hidden>0</span></a>
+    <a href="/materiality" class="{{ 'active' if page == 'materiality' }}">Materiality</a>
     <a href="/adjustments" class="{{ 'active' if page == 'adjustments' }}">Adjustments</a>
-    <a href="/checks" class="{{ 'active' if page == 'checks' }}">Checks <span class="badge" id="nav-checks" hidden>–</span></a>
-    <a href="/balance-sheet" class="{{ 'active' if page == 'bs' }}">Balance Sheet</a>
-    <a href="/pnl" class="{{ 'active' if page == 'pnl' }}">Profit &amp; Loss</a>
-    <a href="/working-papers" class="{{ 'active' if page == 'wp' }}">Working Papers</a>
-    <a href="/issues" class="{{ 'active' if page == 'issues' }}">Issues <span class="badge" id="nav-issues" hidden>0</span></a>
     <a href="/tds-tcs" class="{{ 'active' if page == 'tds' }}">TDS / TCS</a>
     <a href="/fixed-deposits" class="{{ 'active' if page == 'fd' }}">FD Register</a>
-    <a href="/lfar" class="{{ 'active' if page == 'lfar' }}">LFAR</a>
     <a href="/reconciliation" class="{{ 'active' if page == 'recon' }}">Reconciliation</a>
     <a href="/gstr9c" class="{{ 'active' if page == 'gstr9c' }}">GSTR-9C</a>
-    <a href="/materiality" class="{{ 'active' if page == 'materiality' }}">Materiality</a>
-    <a href="/signoff" class="{{ 'active' if page == 'signoff' }}">Sign-Off</a>
-    <a href="/udin" class="{{ 'active' if page == 'udin' }}">UDIN</a>
-    <a href="/pack" class="{{ 'active' if page == 'pack' }}">Audit Pack</a>
-    <a href="/audit-trail" class="{{ 'active' if page == 'audit' }}">Audit Trail</a>
+    <a href="/balance-sheet" class="{{ 'active' if page == 'bs' }}">Balance Sheet</a>
+    <a href="/pnl" class="{{ 'active' if page == 'pnl' }}">Profit &amp; Loss</a>
     <a href="/notes" class="{{ 'active' if page == 'notes' }}">Notes</a>
     <a href="/ratios" class="{{ 'active' if page == 'ratios' }}">Ratios</a>
+    <a href="/checks" class="{{ 'active' if page == 'checks' }}">Checks <span class="badge" id="nav-checks" hidden>–</span></a>
+    <a href="/issues" class="{{ 'active' if page == 'issues' }}">Issues <span class="badge" id="nav-issues" hidden>0</span></a>
+    <a href="/working-papers" class="{{ 'active' if page == 'wp' }}">Working Papers</a>
+    <a href="/lfar" class="{{ 'active' if page == 'lfar' }}">LFAR</a>
+    <a href="/pack" class="{{ 'active' if page == 'pack' }}">Audit Pack</a>
+    <a href="/signoff" class="{{ 'active' if page == 'signoff' }}">Sign-Off</a>
+    <a href="/udin" class="{{ 'active' if page == 'udin' }}">UDIN</a>
+    <a href="/audit-trail" class="{{ 'active' if page == 'audit' }}">Audit Trail</a>
   </nav>
   <div class="banner" id="template-banner" hidden>
     Template <b id="template-name"></b> has not been confirmed for this entity type (open question Q2). Equity labels and mapping may change once confirmed.

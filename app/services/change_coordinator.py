@@ -14,8 +14,8 @@ def after_change(cur, engagement_id: int, event_name: str, detail: dict | None =
         cur.execute("UPDATE engagements SET data_revision = data_revision + 1 WHERE id = %s", (engagement_id,))
     result = exceptions_service.sync_mapping_exceptions(cur, engagement_id)
     checks = checks_service.run_checks(cur, engagement_id, event_name)
-    materiality_service.sync_issues(cur, engagement_id)           # year-on-year variances above materiality (T-23)
     cur.execute("""UPDATE reconciliation_items r SET status = 'resolved' FROM journal_entries j     -- T-20: an approved proposal closes its item
                     WHERE r.engagement_id = %s AND r.status = 'proposed' AND j.id = r.proposed_journal_id AND j.status = 'approved'""", (engagement_id,))
+    materiality_service.sync_issues(cur, engagement_id)           # variances and differences above materiality (T-23)
     audit_service.event(cur, engagement_id, event_name, {**(detail or {}), "exceptions": result, "checks": checks})
     return result

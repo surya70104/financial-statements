@@ -93,9 +93,11 @@ def get(cur, engagement_id: int) -> dict:
     _, _, lines = _statements(cur, engagement_id)
     variances, has_comparatives = _variances(lines)
     exceeding = [v for v in variances if cfg and v["variance"] > cfg["overall_materiality"]]
+    diffs = _difference_candidates(cur, engagement_id)
     return {"materiality": cfg, "benchmarks": _benchmarks(lines),
             "defaults": {"performance_pct": PERFORMANCE_PCT, "trivial_pct": TRIVIAL_PCT},
-            "comparatives_available": has_comparatives, "variances": variances, "exceeding": exceeding}
+            "comparatives_available": has_comparatives, "variances": variances, "exceeding": exceeding,
+            "differences": diffs, "differences_exceeding": [d for d in diffs if cfg and d["variance"] > cfg["overall_materiality"]]}
 
 
 def save(cur, user: dict, engagement_id: int, body: dict) -> dict:
@@ -194,4 +196,68 @@ def sync_issues(cur, engagement_id: int) -> int:
                                   "amount": v["variance"],
                                   "fp": f"{v['code']}|{v['current']}|{v['previous']}|{cfg['overall_materiality']}"})
     cur.execute(_CLOSE, {"e": engagement_id, "keep": keep})
+    sync_difference_issues(cur, engagement_id)
     return len(flagged)
+
+
+# ---- differences that already exist elsewhere (GSTR-9C, reconciliation) ------------------------------------------------
+_UPSERT_RECON = """
+INSERT INTO exceptions (engagement_id, source, reference_id, cause_code, title, detail, amount, fingerprint, is_above_materiality)
+VALUES (%(e)s, 'reconciliation', %(ref)s, 'RECON_DIFFERENCE', %(title)s, %(detail)s, %(amount)s, md5(%(fp)s), TRUE)
+ON CONFLICT (engagement_id, source, reference_id) DO UPDATE SET
+       title = EXCLUDED.title, detail = EXCLUDED.detail, amount = EXCLUDED.amount, fingerprint = EXCLUDED.fingerprint, is_above_materiality = TRUE,
+       is_condition_active = TRUE, status = 'open',
+       cleared_by = NULL, cleared_by_system = FALSE, cleared_at = NULL, clear_reason = NULL,
+       approved_by = NULL, approved_at = NULL, approval_reason = NULL,
+       last_seen_at = now(), occurrences = exceptions.occurrences + 1
+ WHERE NOT exceptions.is_condition_active OR exceptions.fingerprint <> EXCLUDED.fingerprint
+"""
+_CLOSE_RECON = """
+UPDATE exceptions e SET
+       is_condition_active = FALSE,
+       status            = CASE WHEN e.status = 'open' THEN 'cleared' ELSE e.status END,
+       cleared_by_system = CASE WHEN e.status = 'open' THEN TRUE ELSE e.cleared_by_system END,
+       cleared_at        = CASE WHEN e.status = 'open' THEN now() ELSE e.cleared_at END,
+       clear_reason      = CASE WHEN e.status = 'open' THEN 'Auto-cleared: the reconciliation difference is resolved, removed, or now within materiality' ELSE e.clear_reason END
+ WHERE e.engagement_id = %(e)s AND e.source = 'reconciliation' AND e.is_condition_active AND e.reference_id <> ALL(%(keep)s)
+"""
+
+
+def _difference_candidates(cur, engagement_id: int) -> list:
+    """Every difference that still needs attention: GSTR-9C rows that do not agree, and reconciliation items that need an entry
+    (open or proposed). Timing-only and already-approved items are explained, so they are not candidates."""
+    cur.execute("""SELECT 'gstr9c' AS source, 'gstr9c:' || gst_head || ':' || table_ref AS reference, 'GSTR-9C ' || gst_head || ' (' || table_ref || ')' AS label,
+                          difference_amount AS difference, status
+                     FROM gstr9c_reconciliations WHERE engagement_id = %s AND difference_amount <> 0
+                   UNION ALL
+                   SELECT 'reconciliation', 'recon:' || id, account_name || coalesce(' / ' || reference_no, '') || ': ' || description, difference_amount, status
+                     FROM reconciliation_items WHERE engagement_id = %s AND adjustment_action = 'propose_adjustment' AND status IN ('open', 'proposed') AND difference_amount <> 0
+                    ORDER BY 1, 2""", (engagement_id, engagement_id))
+    rows = cur.fetchall()
+    for r in rows:
+        r["variance"] = abs(r["difference"])
+    return sorted(rows, key=lambda r: (-r["variance"], r["reference"]))
+
+
+def sync_difference_issues(cur, engagement_id: int) -> int:
+    """Flag GSTR-9C issues whose difference is above overall materiality, and keep one 'reconciliation' issue for every reconciliation
+    item above it. Idempotent: unchanged rows are not touched. Returns how many differences are above materiality."""
+    cfg = get_config(cur, engagement_id)
+    overall = cfg["overall_materiality"] if cfg else None
+    cur.execute("""UPDATE exceptions x SET is_above_materiality = n.flag
+                     FROM (SELECT id, CASE WHEN source = 'materiality' THEN TRUE WHEN %(o)s::numeric IS NULL THEN FALSE
+                                           ELSE abs(coalesce(amount, 0)) > %(o)s::numeric END AS flag
+                             FROM exceptions WHERE engagement_id = %(e)s AND source IN ('gstr9c', 'materiality')) n
+                    WHERE x.id = n.id AND x.is_above_materiality <> n.flag""", {"e": engagement_id, "o": overall})
+    keep, above = [], 0
+    for r in _difference_candidates(cur, engagement_id) if overall is not None else []:
+        if r["variance"] <= overall:
+            continue
+        above += 1
+        if r["source"] == "reconciliation":
+            keep.append(r["reference"])
+            cur.execute(_UPSERT_RECON, {"e": engagement_id, "ref": r["reference"], "title": f"Reconciliation difference above materiality: {r['label'][:120]}",
+                                        "detail": f"A difference of {_inr(r['difference'])} is above overall materiality of {_inr(overall)}.",
+                                        "amount": r["difference"], "fp": f"{r['reference']}|{r['difference']}|{overall}|{r['status']}"})
+    cur.execute(_CLOSE_RECON, {"e": engagement_id, "keep": keep})
+    return above

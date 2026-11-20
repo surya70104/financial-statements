@@ -26,6 +26,9 @@ PERMISSIONS: dict[str, set[str]] = {
     "recon.propose": {"MAKER", "CHECKER", "PARTNER"},    # creates DRAFT journals only; approval stays maker-checker on the Adjustments tab
     "gstr9c.edit": {"MAKER", "CHECKER", "PARTNER"},
     "lfar.edit": {"MAKER", "CHECKER", "PARTNER"},        # loan schedule and checklist remarks (frozen at sign-off)
+    "issues.assign": {"MAKER", "CHECKER", "PARTNER"},    # give an issue an owner
+    "issues.approve": {"CHECKER", "PARTNER"},            # accept an open issue with a reason (the Maker cannot approve)
+    "prior_year.edit": {"MAKER", "CHECKER", "PARTNER"},  # prior-year comparatives (frozen at sign-off)
     "signoff.perform": {"PARTNER"},
     "signoff.reopen": {"PARTNER"},                       # formal re-opening of a signed-off engagement (needs a reason)
     "udin.manage": {"PARTNER"},                          # record / revoke the ICAI UDIN of a signed version

@@ -10,7 +10,7 @@ from decimal import Decimal
 from fastapi import HTTPException
 from psycopg.types.json import Jsonb
 
-from app.services import audit_service, checks_service, locking, notes_service, statement_service
+from app.services import audit_service, checks_service, locking, notes_service, statement_service, udin_service
 
 
 def _plain(value):
@@ -137,6 +137,7 @@ def sign_off(cur, user: dict, engagement_id: int, note: str | None) -> dict:
     vid = cur.fetchone()["id"]
     cur.execute("INSERT INTO udin_records (engagement_id, signoff_version_id) VALUES (%s,%s) RETURNING id", (engagement_id, vid))
     uid = cur.fetchone()["id"]
+    udin_service.sync_issues(cur, engagement_id)                  # the new version has no UDIN yet: an exception until it is recorded
     audit_service.event(cur, engagement_id, "ENGAGEMENT_SIGNED_OFF", {"signoff_id": sid, "signed_off_by": user["full_name"], "snapshot": snap},
                         entity_table="engagement_signoffs", entity_id=str(sid), reason=note)
     audit_service.event(cur, engagement_id, "REPORT_VERSION_SIGNED_OFF",
@@ -163,6 +164,7 @@ def reopen(cur, user: dict, engagement_id: int, reason: str | None) -> dict:
                     WHERE id = %s""", (user["id"], reason, active["id"]))
     cur.execute("SELECT set_config('app.signoff_transition', 'on', true)")
     cur.execute("UPDATE engagement_signoffs SET is_locked = FALSE WHERE engagement_id = %s", (engagement_id,))
+    udin_service.sync_issues(cur, engagement_id)                  # the withdrawn version no longer needs a UDIN
     audit_service.event(cur, engagement_id, "REPORT_VERSION_REOPENED",
                         {"version_id": active["id"], "version_number": active["version_number"], "reopened_by": user["full_name"]},
                         entity_table="report_signoff_versions", entity_id=str(active["id"]), reason=reason)

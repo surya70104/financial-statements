@@ -76,6 +76,7 @@ def record(cur, user: dict, engagement_id: int, version_id: int, udin_number: st
     doc = (document_type or "").strip() or "Statutory Audit Report"
     cur.execute("""UPDATE udin_records SET status = 'recorded', udin_number = %s, udin_generated_date = %s, document_type = %s,
                           recorded_by = %s, recorded_at = now() WHERE id = %s""", (udin, gen, doc, user["id"], rec["id"]))
+    sync_issues(cur, engagement_id)
     item = _item(cur, engagement_id, version_id)
     audit_service.event(cur, engagement_id, "UDIN_RECORDED",
                         {"version_number": item["version_number"], "udin_number": udin, "udin_generated_date": gen, "document_type": doc,
@@ -93,8 +94,47 @@ def revoke(cur, user: dict, engagement_id: int, version_id: int, reason: str | N
         raise HTTPException(409, "Only a recorded UDIN can be revoked.")
     cur.execute("""UPDATE udin_records SET status = 'revoked', revoked_by = %s, revoked_at = now(), revoked_reason = %s WHERE id = %s""",
                 (user["id"], reason, rec["id"]))
+    sync_issues(cur, engagement_id)
     item = _item(cur, engagement_id, version_id)
     audit_service.event(cur, engagement_id, "UDIN_REVOKED",
                         {"version_number": item["version_number"], "udin_number": item["udin_number"], "revoked_by": user["full_name"]},
                         entity_table="udin_records", entity_id=str(rec["id"]), reason=reason)
     return item
+
+
+_UPSERT_UDIN = """
+INSERT INTO exceptions (engagement_id, source, reference_id, cause_code, title, detail, fingerprint)
+VALUES (%(e)s, 'udin', %(ref)s, 'MISSING_UDIN', %(title)s, %(detail)s, md5(%(fp)s))
+ON CONFLICT (engagement_id, source, reference_id) DO UPDATE SET
+       title = EXCLUDED.title, detail = EXCLUDED.detail, fingerprint = EXCLUDED.fingerprint,
+       is_condition_active = TRUE, status = 'open',
+       cleared_by = NULL, cleared_by_system = FALSE, cleared_at = NULL, clear_reason = NULL,
+       approved_by = NULL, approved_at = NULL, approval_reason = NULL,
+       last_seen_at = now(), occurrences = exceptions.occurrences + 1
+ WHERE NOT exceptions.is_condition_active OR exceptions.fingerprint <> EXCLUDED.fingerprint
+"""
+_CLOSE_UDIN = """
+UPDATE exceptions e SET
+       is_condition_active = FALSE,
+       status            = CASE WHEN e.status = 'open' THEN 'cleared' ELSE e.status END,
+       cleared_by_system = CASE WHEN e.status = 'open' THEN TRUE ELSE e.cleared_by_system END,
+       cleared_at        = CASE WHEN e.status = 'open' THEN now() ELSE e.cleared_at END,
+       clear_reason      = CASE WHEN e.status = 'open' THEN 'Auto-cleared: the UDIN is recorded (or the report version was withdrawn by re-opening)' ELSE e.clear_reason END
+ WHERE e.engagement_id = %(e)s AND e.source = 'udin' AND e.is_condition_active AND e.reference_id <> ALL(%(keep)s)
+"""
+
+
+def sync_issues(cur, engagement_id: int) -> None:
+    """One deduplicated issue ('udin:v<n>') for every ACTIVE signed version whose UDIN is still pending or was revoked. It clears when
+    the UDIN is recorded, and when the version is withdrawn by a re-opening (a withdrawn report needs no UDIN). Idempotent."""
+    cur.execute("""SELECT v.version_number, u.status AS udin_status FROM udin_records u JOIN report_signoff_versions v ON v.id = u.signoff_version_id
+                    WHERE u.engagement_id = %s AND v.status = 'signed_locked' AND u.status IN ('pending_udin', 'revoked')""", (engagement_id,))
+    keep = []
+    for r in cur.fetchall():
+        ref = f"udin:v{r['version_number']}"
+        keep.append(ref)
+        revoked = r["udin_status"] == "revoked"
+        cur.execute(_UPSERT_UDIN, {"e": engagement_id, "ref": ref, "fp": f"{ref}|{r['udin_status']}",
+                                   "title": f"Signed report v{r['version_number']} has no UDIN" if not revoked else f"UDIN of signed report v{r['version_number']} was revoked",
+                                   "detail": "Record the 18-character ICAI UDIN for this signed version on the UDIN tab."})
+    cur.execute(_CLOSE_UDIN, {"e": engagement_id, "keep": keep})
