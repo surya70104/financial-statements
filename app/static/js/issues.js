@@ -26,8 +26,8 @@
   }
 
   function ownerCell(it) {
-    if (it.status !== "open") return it.owner_name ? h("span", {}, it.owner_name) : h("span", { class: "muted" }, "—");
-    const sel = h("select", { "aria-label": "Owner of issue " + it.id, disabled: locked(), onchange: e => assign(it, e.target.value) },
+    if (it.status !== "open" || locked()) return it.owner_name ? h("span", {}, it.owner_name) : h("span", { class: "muted" }, "Unassigned");
+    const sel = h("select", { "aria-label": "Owner of issue " + it.id, onchange: e => assign(it, e.target.value) },
       h("option", { value: "" }, "Unassigned"),
       ...App.state.users.map(u => h("option", { value: u.id, selected: u.id === it.owner_id }, u.full_name.replace(/ \(.*\)$/, ""))));
     return sel;

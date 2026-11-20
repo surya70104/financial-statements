@@ -246,6 +246,7 @@ def pack_docx(cur, engagement_id: int) -> bytes:
     g = hd["governance"]
     _table(doc, ["Item", "Detail"], [
         ["Entity", f"{hd['entity']['name']} ({entity.SHORT_LABELS[ctx['entity_type']]})"], ["Financial year", f"FY {hd['financial_year']} ({long_date(hd['period_start'])} to {long_date(hd['period_end'])})"],
+        ["Statement date", long_date(hd["period_end"])], ["Report version", hd["report_version"]["label"]],
         ["Engagement", f"{hd['engagement_type'].replace('_', ' ').title()} · {hd['engagement_status']}"],
         ["Template", f"{hd['template']['name']} · {'confirmed' if hd['template']['confirmed'] else 'not confirmed'}"],
         ["Sign-off status", g["status"] + (f" ({g['signed_off_by']})" if g["signed_off_by"] else "")], ["Data revision", str(hd["data_revision"])]], [4.5, 12.5])

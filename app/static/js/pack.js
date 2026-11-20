@@ -17,6 +17,8 @@
     return h("section", { class: "card pack-section" }, h("h2", {}, "1. Engagement & Governance"),
       dl([["Entity", hd.entity.name], ["CIN / PAN", [hd.entity.cin, hd.entity.pan].filter(Boolean).join(" / ") || "Not recorded"],
           ["Financial year", "FY " + hd.financial_year + " (" + hd.period_start + " to " + hd.period_end + ")"],
+          ["Statement date", hd.period_end],
+          ["Report version", chip(hd.report_version.status === "signed" ? "ok" : "warn", hd.report_version.label)],
           ["Engagement", hd.engagement_type.replace(/_/g, " ").toLowerCase() + " · " + hd.engagement_status],
           ["Template", t.name + " · " + (t.confirmed ? "confirmed" : "NOT confirmed")],
           ["Sign-off status", chip(g.is_locked ? "ok" : (g.can_sign_off ? "warn" : "bad"), (g.is_locked ? "🔒 " : "") + g.status)],

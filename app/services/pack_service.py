@@ -16,6 +16,15 @@ def _both(line: dict) -> dict:
     return {"label": line["label"], "current": line["current"], "previous": line["previous"]}
 
 
+def _report_version(gate: dict) -> dict:
+    """'Version v1 (Signed)' while a signed version is live, otherwise 'Draft v2' (the version that the next sign-off will create)."""
+    active = gate["active_version"]
+    if active:
+        return {"number": active["version_number"], "status": "signed", "label": f"Version v{active['version_number']} (Signed)",
+                "signed_at": active["signed_off_at"]}
+    return {"number": gate["next_version_number"], "status": "draft", "label": f"Draft v{gate['next_version_number']}", "signed_at": None}
+
+
 def build(cur, engagement_id: int) -> dict:
     cur.execute("""SELECT e.id, e.fy_label, e.period_start, e.period_end, e.engagement_type, e.status, e.data_revision,
                           c.name AS client_name, c.cin, c.pan, e.entity_type, e.template_confirmed, t.code AS template_code, t.name AS template_name
@@ -33,6 +42,7 @@ def build(cur, engagement_id: int) -> dict:
         "engagement_type": eng["engagement_type"], "engagement_status": eng["status"], "data_revision": eng["data_revision"],
         "template": {"code": eng["template_code"], "name": eng["template_name"], "confirmed": eng["template_confirmed"], "open_question": None,
                      "note": None if eng["template_confirmed"] else "The statement template is not yet confirmed for this entity type."},
+        "report_version": _report_version(gate),
         "governance": {"is_locked": gate["is_locked"], "can_sign_off": gate["can_sign_off"], "blockers": len(gate["blockers"]),
                        "signed_off_by": signoff["signed_off_by_name"] if signoff else None,
                        "signed_off_at": signoff["signed_off_at"] if signoff else None,
