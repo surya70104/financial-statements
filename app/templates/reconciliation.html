@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Reconciliation - CA Workbench{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="row between"><h2>Reconciliation engine</h2><span id="r-status" aria-live="polite"></span></div>
+  <p class="muted">List the differences between the books and an outside statement (bank, party or other). <b>Difference = statement amount − book amount</b>, measured on the offset (bank / control) ledger: receipts are positive, payments negative. Items marked <b>timing only</b> (a cheque not yet presented, a deposit in transit) need no entry. Items marked <b>propose adjustment</b> become <b>draft</b> journal entries; they change nothing until a different user approves them on the <a href="/adjustments">Adjustments</a> tab.</p>
+  <div class="pack-kpis" id="r-cards"></div>
+</section>
+
+<section class="card" id="r-add-card">
+  <h2>Add items</h2>
+  <div class="row filters">
+    <label>Upload Excel / CSV <input type="file" id="r-file" accept=".xlsx,.csv"></label>
+    <button type="button" id="r-upload" disabled>Upload</button>
+    <span class="muted">Columns: Type, Account Name, Date, Reference No, Description, Book Amount, Statement Amount, Difference (optional), Adjustment Action, Ledger Code, Offset Ledger Code. Try <code>samples/bank_reconciliation.xlsx</code>.</span>
+  </div>
+  <div id="r-errors"></div>
+  <details open>
+    <summary>Add a single item</summary>
+    <div class="row filters">
+      <label>Type <select id="r-type"><option value="bank">Bank</option><option value="party">Party</option><option value="other">Other</option></select></label>
+      <label>Account <input type="text" id="r-account" placeholder="HDFC Bank Current A/c" maxlength="150" style="width:200px"></label>
+      <label>Date <input type="date" id="r-date"></label>
+      <label>Reference <input type="text" id="r-ref" maxlength="80" style="width:120px"></label>
+      <label>Description <input type="text" id="r-desc" maxlength="300" style="width:280px"></label>
+    </div>
+    <div class="row filters">
+      <label>Book amount (₹) <input type="text" id="r-book" inputmode="decimal" placeholder="0.00" style="width:130px" autocomplete="off"></label>
+      <label>Statement amount (₹) <input type="text" id="r-ext" inputmode="decimal" placeholder="-4720.00" style="width:130px" autocomplete="off"></label>
+      <label>Action <select id="r-action"><option value="propose_adjustment">Propose adjustment</option><option value="timing_only">Timing only</option></select></label>
+      <label>Ledger <input type="text" id="r-ledger" list="r-ledgers" placeholder="e.g. Bank Charges" style="width:190px"></label>
+      <label>Offset ledger <input type="text" id="r-offset" list="r-ledgers" placeholder="e.g. HDFC Bank Current A/c" style="width:190px"></label>
+      <datalist id="r-ledgers"></datalist>
+      <button type="button" class="primary" id="r-add" disabled>Add item</button>
+      <span class="muted" id="r-calc"></span>
+    </div>
+  </details>
+  <div class="muted" id="r-hint"></div>
+</section>
+
+<section class="card">
+  <div class="row between"><h2>Items</h2>
+    <div class="row"><span class="muted" id="r-prop-hint"></span><button type="button" class="primary" id="r-propose" disabled>Create Proposed Adjustments</button></div></div>
+  <div class="scroll">
+    <table id="r-table">
+      <thead><tr><th>#</th><th>Date</th><th>Account</th><th>Reference</th><th>Description</th><th class="num">Books</th><th class="num">Statement</th><th class="num">Difference</th><th>Action</th><th>Status</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/static/js/reconciliation.js"></script>{% endblock %}

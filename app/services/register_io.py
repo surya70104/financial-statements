@@ -121,3 +121,19 @@ def text(value, label: str, required: bool = True, maxlen: int = 200) -> str | N
     if len(t) > maxlen:
         raise ValueError(f"{label} is too long ({maxlen} characters at most).")
     return t
+
+
+def signed_money(value, label: str) -> Decimal:
+    """An amount that may be negative or zero (differences, GST figures), exact to the paisa."""
+    if value is None or str(value).strip() == "":
+        raise ValueError(f"{label} is missing.")
+    s = str(value).replace(",", "").replace("₹", "").strip()
+    if s.startswith("(") and s.endswith(")"):
+        s = "-" + s[1:-1]                                          # accounting style (1,234.00)
+    try:
+        d = Decimal(s)
+    except InvalidOperation:
+        raise ValueError(f"{label}: '{value}' is not a number.")
+    if not d.is_finite() or d != d.quantize(PAISA):
+        raise ValueError(f"{label}: '{value}' must be exact to the paisa (2 decimals).")
+    return d.quantize(PAISA)

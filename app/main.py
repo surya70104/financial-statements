@@ -60,6 +60,16 @@ def page_issues(request: Request):
     return templates.TemplateResponse(request, "issues.html", {"page": "issues"})
 
 
+@app.get("/reconciliation", response_class=HTMLResponse, include_in_schema=False)
+def page_recon(request: Request):
+    return templates.TemplateResponse(request, "reconciliation.html", {"page": "recon"})
+
+
+@app.get("/gstr9c", response_class=HTMLResponse, include_in_schema=False)
+def page_gstr9c(request: Request):
+    return templates.TemplateResponse(request, "gstr9c.html", {"page": "gstr9c"})
+
+
 @app.get("/tds-tcs", response_class=HTMLResponse, include_in_schema=False)
 def page_tds(request: Request):
     return templates.TemplateResponse(request, "tds_tcs.html", {"page": "tds"})

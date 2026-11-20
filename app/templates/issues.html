@@ -3,9 +3,9 @@
 {% block content %}
 <section class="card">
   <div class="row between"><h2>Issue tracker</h2><div class="row" id="issue-summary" aria-live="polite"></div></div>
-  <p class="muted">One list for everything that needs attention. <b>Check</b>, <b>Mapping</b> and <b>Materiality</b> issues are raised by the system and clear themselves once the underlying problem is fixed. Only <b>Manual</b> issues are cleared by hand, with a resolution note.</p>
+  <p class="muted">One list for everything that needs attention. <b>Check</b>, <b>Mapping</b> and <b>Materiality</b> and <b>GSTR-9C</b> issues are raised by the system and clear themselves once the underlying problem is fixed. Only <b>Manual</b> issues are cleared by hand, with a resolution note.</p>
   <div class="row filters">
-    <label>Source <select id="f-source"><option value="">All</option><option value="check">Check</option><option value="mapping">Mapping</option><option value="materiality">Materiality</option><option value="manual">Manual</option></select></label>
+    <label>Source <select id="f-source"><option value="">All</option><option value="check">Check</option><option value="mapping">Mapping</option><option value="materiality">Materiality</option><option value="gstr9c">GSTR-9C</option><option value="manual">Manual</option></select></label>
     <label>Status <select id="f-status"><option value="open">Open</option><option value="cleared">Cleared</option><option value="">All</option></select></label>
   </div>
   <div class="scroll">

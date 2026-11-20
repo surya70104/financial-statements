@@ -1,8 +1,8 @@
-"""Create the two sample workbooks used to try the TDS/TCS pack and the FD register:
+"""Create the sample workbooks used to try the WP9 modules (TDS/TCS pack, FD register, bank reconciliation, GSTR-9C):
 
     .\\.venv\\Scripts\\python.exe -m scripts.make_samples
 
-writes samples/tds_tcs_pack.xlsx and samples/fd_register.xlsx for the pilot (9AND9 DIGISOFT, FY 2026-27).
+writes samples/tds_tcs_pack.xlsx, fd_register.xlsx, bank_reconciliation.xlsx and gstr9c_reconciliation.xlsx for the pilot (9AND9 DIGISOFT, FY 2026-27).
 Parties and banks are ledgers that already exist in sample_data/9and9_pilot_tb_76_ledgers.csv. Amounts are exact to the
 paisa and the accrued interest is calculated with the same function the app uses to verify it.
 """
@@ -82,8 +82,52 @@ def make_fd():
     wb.save(OUT / "fd_register.xlsx")
 
 
+RECON_HEADERS = ["Type", "Account Name", "Date", "Reference No", "Description", "Book Amount", "Statement Amount", "Difference",
+                 "Adjustment Action", "Ledger Code", "Offset Ledger Code"]
+BANK = "HDFC Bank Current A/c"
+# Amounts are as they move the bank balance: receipts +, payments -. Difference = statement - books.
+RECON_ROWS = [
+    ("bank", BANK, date(2027, 3, 29), "CHQ 004521", "Cheque issued to Zenith Consulting, not yet presented", "-185000.00", "0.00", "timing_only", None, None),
+    ("bank", BANK, date(2027, 3, 31), "DEP 31032027", "Deposit in transit: customer cheque banked on 31 March", "240000.00", "0.00", "timing_only", None, None),
+    ("bank", BANK, date(2027, 3, 31), "CHG-Q4", "Bank charges debited by the bank, not yet booked", "0.00", "-4720.00", "propose_adjustment", "Bank Charges", BANK),
+    ("bank", BANK, date(2027, 3, 30), "NEFT-CHG", "NEFT / RTGS charges for March, not yet booked", "0.00", "-1180.00", "propose_adjustment", "Bank Charges", BANK),
+    ("bank", BANK, date(2027, 3, 31), "FD-INT-Q4", "Quarterly FD interest credited by the bank, not yet booked", "0.00", "38500.00", "propose_adjustment", "Interest on Fixed Deposits", BANK),
+    ("bank", BANK, date(2027, 3, 28), "POS-MAR", "POS / payment terminal commission deducted, not yet booked", "0.00", "-7250.40", "propose_adjustment", "Bank Charges", BANK),
+]
+
+GSTR_HEADERS = ["GST Head", "Table Ref", "Description", "Books Amount", "GSTR-9C Amount"]
+GSTR_ROWS = [
+    ("CGST", "Table 9", "Output tax payable per books and per GSTR-9C", "980000.00", "980000.00"),
+    ("SGST", "Table 9", "Output tax payable per books and per GSTR-9C", "980000.00", "980000.00"),
+    ("IGST", "Table 12", "Input tax credit: books exceed the credit reported in GSTR-9C", "3845000.00", "3797500.00"),
+    ("CESS", "Table 12", "Cess credit availed in books but not reported", "18400.00", "12150.00"),
+]
+
+
+def make_recon():
+    wb, ws = _sheet("Bank_Reconciliation", RECON_HEADERS, [8, 24, 12, 16, 56, 16, 18, 14, 20, 28, 24])
+    for kind, account, when, ref, desc, book, ext, action, ledger, offset in RECON_ROWS:
+        ws.append([kind, account, when, ref, desc, float(book), float(ext), float(D(ext) - D(book)), action, ledger, offset if ledger else None])
+    for r in ws.iter_rows(min_row=2):
+        r[2].number_format = "DD-MM-YYYY"
+        for c in (r[5], r[6], r[7]):
+            c.number_format = "#,##0.00;(#,##0.00)"
+    wb.save(OUT / "bank_reconciliation.xlsx")
+
+
+def make_gstr():
+    wb, ws = _sheet("GSTR9C", GSTR_HEADERS, [10, 12, 60, 18, 18])
+    for head, table, desc, books, nine_c in GSTR_ROWS:
+        ws.append([head, table, desc, float(books), float(nine_c)])
+    for r in ws.iter_rows(min_row=2):
+        r[3].number_format = r[4].number_format = "#,##0.00"
+    wb.save(OUT / "gstr9c_reconciliation.xlsx")
+
+
 if __name__ == "__main__":
     OUT.mkdir(exist_ok=True)
     make_tds()
     make_fd()
-    print(f"Wrote {OUT / 'tds_tcs_pack.xlsx'} ({len(TDS_ROWS)} rows) and {OUT / 'fd_register.xlsx'} ({len(FD_ROWS)} rows)")
+    make_recon()
+    make_gstr()
+    print(f"Wrote 4 workbooks to {OUT}: tds_tcs_pack ({len(TDS_ROWS)} rows), fd_register ({len(FD_ROWS)}), bank_reconciliation ({len(RECON_ROWS)}), gstr9c_reconciliation ({len(GSTR_ROWS)})")

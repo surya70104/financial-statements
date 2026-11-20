@@ -4,7 +4,7 @@
   let data = null;
   let clearing = null;                                // id of the manual issue whose clear form is open
   const eid = () => App.state.engagement.id;
-  const SOURCE = { check: ["bad", "CHECK"], mapping: ["warn", "MAPPING"], materiality: ["warn", "MATERIALITY"], manual: ["ok", "MANUAL"] };
+  const SOURCE = { check: ["bad", "CHECK"], mapping: ["warn", "MAPPING"], materiality: ["warn", "MATERIALITY"], gstr9c: ["bad", "GSTR-9C"], manual: ["ok", "MANUAL"] };
 
   function filters() { return { source: document.getElementById("f-source").value, status: document.getElementById("f-status").value }; }
 
@@ -12,7 +12,7 @@
     const s = data.summary;
     document.getElementById("issue-summary").replaceChildren(
       h("span", { class: "chip " + (s.open ? "bad" : "ok") }, s.open + " open"), h("span", { class: "chip ok" }, s.cleared + " cleared"),
-      ...["check", "mapping", "materiality", "manual"].map(k => h("span", { class: "muted" }, k + ": " + s.by_source[k].open + " open")));
+      ...["check", "mapping", "materiality", "gstr9c", "manual"].map(k => h("span", { class: "muted" }, (SOURCE[k] ? SOURCE[k][1].toLowerCase() : k) + ": " + s.by_source[k].open + " open")));
     App.setIssuesBadge(s);
   }
 
@@ -75,6 +75,8 @@
   App.ready.then(async () => {
     ["f-source", "f-status"].forEach(id => document.getElementById(id).addEventListener("change", render));
     document.getElementById("new-save").addEventListener("click", raise);
+    const wanted = new URLSearchParams(location.search).get("source");            // e.g. /issues?source=gstr9c from the GSTR-9C screen
+    if (wanted && [...document.getElementById("f-source").options].some(o => o.value === wanted)) document.getElementById("f-source").value = wanted;
     App.onChange(what => { if (data && what === "unit") render(); });
     await load();
   }).catch(err => App.toast(err.message, true));

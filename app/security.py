@@ -22,6 +22,9 @@ PERMISSIONS: dict[str, set[str]] = {
     "tds.post": {"CHECKER", "PARTNER"},                  # post rows to the adjusted TB (plus: not the person who entered them)
     "fd.edit": {"MAKER", "CHECKER", "PARTNER"},
     "fd.post": {"CHECKER", "PARTNER"},
+    "recon.edit": {"MAKER", "CHECKER", "PARTNER"},       # add / import / delete reconciliation items
+    "recon.propose": {"MAKER", "CHECKER", "PARTNER"},    # creates DRAFT journals only; approval stays maker-checker on the Adjustments tab
+    "gstr9c.edit": {"MAKER", "CHECKER", "PARTNER"},
     "signoff.perform": {"PARTNER"},
     "signoff.reopen": {"PARTNER"},                       # formal re-opening of a signed-off engagement (needs a reason)
     "udin.manage": {"PARTNER"},                          # record / revoke the ICAI UDIN of a signed version

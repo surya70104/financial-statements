@@ -8,7 +8,7 @@ from app.db import tx
 from app.jsonutil import json_response
 from app.security import current_user, require
 from app.services import (adjustments_service, audit_service, checks_service, exceptions_service, issues_service, locking,
-                          fd_service, mapping_service, materiality_service, notes_service, pack_service, ratios_service, signoff_service, statement_service, tds_service, udin_service,
+                          fd_service, gstr9c_service, mapping_service, materiality_service, notes_service, pack_service, ratios_service, reconciliation_service, signoff_service, statement_service, tds_service, udin_service,
                           tb_import, working_papers_service)
 
 router = APIRouter(prefix="/api")
@@ -453,6 +453,84 @@ def add_fd(engagement_id: int, body: FdRowIn, user: dict = Depends(require("fd.e
 def delete_fd(engagement_id: int, row_id: int, user: dict = Depends(require("fd.edit"))):
     with tx(user["id"]) as cur:
         return json_response(fd_service.delete_row(cur, user, engagement_id, row_id))
+
+
+# ---- T-20 reconciliation engine and T-21 GSTR-9C reconciliation -------------------------------------------------
+class ReconIn(BaseModel):
+    recon_type: str | None = None
+    account_name: str | None = None
+    item_date: str | None = None
+    reference_no: str | int | None = None
+    description: str | None = None
+    book_amount: str | int | float | None = None
+    external_amount: str | int | float | None = None
+    adjustment_action: str | None = None
+    ledger_code: str | None = None
+    offset_ledger_code: str | None = None
+
+
+class Gstr9cIn(BaseModel):
+    gst_head: str | None = None
+    table_ref: str | None = None
+    description: str | None = None
+    books_amount: str | int | float | None = None
+    gstr9c_amount: str | int | float | None = None
+
+
+@router.get("/engagements/{engagement_id}/reconciliations")
+def get_recon(engagement_id: int):
+    with tx() as cur:
+        return json_response(reconciliation_service.list_rows(cur, engagement_id))
+
+
+@router.post("/engagements/{engagement_id}/reconciliations/import")
+async def import_recon(engagement_id: int, file: UploadFile = File(...), user: dict = Depends(require("recon.edit"))):
+    data = await _upload(file)
+    with tx(user["id"]) as cur:
+        return json_response(reconciliation_service.import_file(cur, user, engagement_id, file.filename or "upload", data))
+
+
+@router.post("/engagements/{engagement_id}/reconciliations/propose-adjustments")
+def propose_recon(engagement_id: int, user: dict = Depends(require("recon.propose"))):
+    with tx(user["id"]) as cur:
+        return json_response(reconciliation_service.propose(cur, user, engagement_id))
+
+
+@router.post("/engagements/{engagement_id}/reconciliations")
+def add_recon(engagement_id: int, body: ReconIn, user: dict = Depends(require("recon.edit"))):
+    with tx(user["id"]) as cur:
+        return json_response(reconciliation_service.add_row(cur, user, engagement_id, body.model_dump()))
+
+
+@router.delete("/engagements/{engagement_id}/reconciliations/{item_id}")
+def delete_recon(engagement_id: int, item_id: int, user: dict = Depends(require("recon.edit"))):
+    with tx(user["id"]) as cur:
+        return json_response(reconciliation_service.delete_row(cur, user, engagement_id, item_id))
+
+
+@router.get("/engagements/{engagement_id}/gstr9c")
+def get_gstr9c(engagement_id: int):
+    with tx() as cur:
+        return json_response(gstr9c_service.list_rows(cur, engagement_id))
+
+
+@router.post("/engagements/{engagement_id}/gstr9c/import")
+async def import_gstr9c(engagement_id: int, file: UploadFile = File(...), user: dict = Depends(require("gstr9c.edit"))):
+    data = await _upload(file)
+    with tx(user["id"]) as cur:
+        return json_response(gstr9c_service.import_file(cur, user, engagement_id, file.filename or "upload", data))
+
+
+@router.post("/engagements/{engagement_id}/gstr9c")
+def add_gstr9c(engagement_id: int, body: Gstr9cIn, user: dict = Depends(require("gstr9c.edit"))):
+    with tx(user["id"]) as cur:
+        return json_response(gstr9c_service.add_row(cur, user, engagement_id, body.model_dump()))
+
+
+@router.delete("/engagements/{engagement_id}/gstr9c/{row_id}")
+def delete_gstr9c(engagement_id: int, row_id: int, user: dict = Depends(require("gstr9c.edit"))):
+    with tx(user["id"]) as cur:
+        return json_response(gstr9c_service.delete_row(cur, user, engagement_id, row_id))
 
 
 # ---- T-14 working papers ---------------------------------------------------------------------------------------

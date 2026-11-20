@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}GSTR-9C - CA Workbench{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="row between"><h2>GSTR-9C reconciliation</h2><span id="g-status" aria-live="polite"></span></div>
+  <p class="muted">Compare the GST figures in the books with the figures reported in GSTR-9C, per GST head and table. <b>Difference = books − GSTR-9C.</b> Every non-zero difference is raised <b>once</b> in the <a href="/issues?source=gstr9c">Issue Tracker</a> with its head and amount. It clears itself when you re-import and the difference is 0.00. Importing a head and table that already exists updates it.</p>
+  <div class="pack-kpis" id="g-cards"></div>
+</section>
+
+<section class="card" id="g-add-card">
+  <h2>Add rows</h2>
+  <div class="row filters">
+    <label>Upload Excel / CSV <input type="file" id="g-file" accept=".xlsx,.csv"></label>
+    <button type="button" id="g-upload" disabled>Upload</button>
+    <span class="muted">Columns: GST Head, Table Ref, Description, Books Amount, GSTR-9C Amount. Try <code>samples/gstr9c_reconciliation.xlsx</code>.</span>
+  </div>
+  <div id="g-errors"></div>
+  <details open>
+    <summary>Add or update a single row</summary>
+    <div class="row filters">
+      <label>GST head <select id="g-head"><option>CGST</option><option>SGST</option><option>IGST</option><option>CESS</option></select></label>
+      <label>Table <input type="text" id="g-table" placeholder="Table 9" maxlength="30" style="width:100px"></label>
+      <label>Description <input type="text" id="g-desc" maxlength="300" style="width:260px"></label>
+      <label>Books (₹) <input type="text" id="g-books" inputmode="decimal" style="width:130px" autocomplete="off"></label>
+      <label>GSTR-9C (₹) <input type="text" id="g-nine" inputmode="decimal" style="width:130px" autocomplete="off"></label>
+      <button type="button" class="primary" id="g-add" disabled>Save row</button>
+      <span class="muted" id="g-calc"></span>
+    </div>
+  </details>
+  <div class="muted" id="g-hint"></div>
+</section>
+
+<section class="card">
+  <div class="row between"><h2>Reconciliation</h2><a href="/issues?source=gstr9c" id="g-issues-link">View logged differences in Issues →</a></div>
+  <div class="scroll">
+    <table id="g-table-el">
+      <thead><tr><th>#</th><th>GST head</th><th>Table</th><th>Description</th><th class="num">Books</th><th class="num">GSTR-9C</th><th class="num">Difference</th><th>Status</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/static/js/gstr9c.js"></script>{% endblock %}
