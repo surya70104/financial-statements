@@ -17,8 +17,8 @@ def _both(line: dict) -> dict:
 
 
 def build(cur, engagement_id: int) -> dict:
-    cur.execute("""SELECT e.id, e.fy_label, e.period_start, e.period_end, e.engagement_type, e.status, e.data_revision, e.template_confirmed_at,
-                          c.name AS client_name, c.cin, c.pan, c.entity_type, t.code AS template_code, t.name AS template_name
+    cur.execute("""SELECT e.id, e.fy_label, e.period_start, e.period_end, e.engagement_type, e.status, e.data_revision,
+                          c.name AS client_name, c.cin, c.pan, e.entity_type, e.template_confirmed, t.code AS template_code, t.name AS template_name
                      FROM engagements e JOIN clients c ON c.id = e.client_id JOIN statement_templates t ON t.id = e.template_id
                     WHERE e.id = %s""", (engagement_id,))
     eng = cur.fetchone()
@@ -31,9 +31,8 @@ def build(cur, engagement_id: int) -> dict:
         "entity": {"name": eng["client_name"], "cin": eng["cin"], "pan": eng["pan"], "entity_type": eng["entity_type"]},
         "financial_year": eng["fy_label"], "period_start": eng["period_start"], "period_end": eng["period_end"],
         "engagement_type": eng["engagement_type"], "engagement_status": eng["status"], "data_revision": eng["data_revision"],
-        "template": {"code": eng["template_code"], "name": eng["template_name"], "confirmed": eng["template_confirmed_at"] is not None,
-                     "open_question": "Q2",
-                     "note": None if eng["template_confirmed_at"] else "The statement template is not yet confirmed for this entity type (open question Q2)."},
+        "template": {"code": eng["template_code"], "name": eng["template_name"], "confirmed": eng["template_confirmed"], "open_question": None,
+                     "note": None if eng["template_confirmed"] else "The statement template is not yet confirmed for this entity type."},
         "governance": {"is_locked": gate["is_locked"], "can_sign_off": gate["can_sign_off"], "blockers": len(gate["blockers"]),
                        "signed_off_by": signoff["signed_off_by_name"] if signoff else None,
                        "signed_off_at": signoff["signed_off_at"] if signoff else None,
@@ -55,7 +54,7 @@ def build(cur, engagement_id: int) -> dict:
         "profit_and_loss": {k: _both(lines[c]) for k, c in (
             ("revenue_from_operations", "PL.REV"), ("other_income", "PL.OI"), ("total_income", "PL.INCOME.TOTAL"),
             ("total_expenses", "PL.EXP.TOTAL"), ("profit_before_tax", "PL.PBT"), ("tax_expense", "PL.TAX"), ("profit_for_period", "PL.PAT"))},
-        "ratios": {"provisional": ratios["provisional"], "open_question": "Q7", "note": ratios["provisional_message"],
+        "ratios": {"provisional": ratios["provisional"], "open_question": None, "note": ratios["basis"],
                    "items": [{k: r[k] for k in ("code", "name", "category", "formula", "unit", "value", "status", "explanation")} for r in ratios["items"]]},
         "unmapped_ledgers_excluded": bs["warnings"]["unmapped_ledgers"],
     }
@@ -95,8 +94,8 @@ def build(cur, engagement_id: int) -> dict:
 
 
 def log_export(cur, user: dict, engagement_id: int, fmt: str) -> dict:
-    if fmt not in ("print", "json"):
-        raise HTTPException(400, "format must be 'print' or 'json'.")
+    if fmt not in ("print", "json", "docx"):
+        raise HTTPException(400, "format must be 'print', 'json' or 'docx'.")
     cur.execute("SELECT data_revision FROM engagements WHERE id = %s", (engagement_id,))
     eng = cur.fetchone()
     if not eng:

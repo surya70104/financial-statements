@@ -1,14 +1,14 @@
 """Step 1 API: users, engagement header, trial balance import (T-01), mapping (T-02), exceptions (T-03), audit log."""
 from datetime import date
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
 from pydantic import BaseModel
 
 from app.db import tx
 from app.jsonutil import json_response
 from app.security import current_user, require
 from app.services import (adjustments_service, audit_service, checks_service, exceptions_service, issues_service, locking,
-                          fd_service, gstr9c_service, lfar_service, mapping_service, prior_year_service, materiality_service, notes_service, pack_service, ratios_service, reconciliation_service, signoff_service, statement_service, tds_service, udin_service,
+                          docx_export_service, engagement_service, entity, fd_service, gstr9c_service, lfar_service, mapping_service, prior_year_service, materiality_service, notes_service, pack_service, ratios_service, reconciliation_service, signoff_service, statement_service, tds_service, udin_service,
                           tb_import, working_papers_service)
 
 router = APIRouter(prefix="/api")
@@ -18,7 +18,7 @@ MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 
 def _engagement_or_404(cur, engagement_id: int) -> dict:
     cur.execute("""SELECT e.id, e.fy_label, e.engagement_type, e.status, e.default_unit, e.data_revision, e.period_start, e.period_end,
-                          e.materiality_amount, e.template_confirmed_at, c.name AS client_name, c.entity_type, c.cin, c.pan,
+                          e.materiality_amount, e.template_confirmed, e.entity_type, c.name AS client_name, c.entity_type AS client_entity_type, c.cin, c.pan,
                           t.id AS template_id, t.code AS template_code, t.name AS template_name,
                           v.version_no, v.status AS version_status
                      FROM engagements e JOIN clients c ON c.id = e.client_id
@@ -59,7 +59,47 @@ def engagement_header(engagement_id: int):
         eng["issues"] = issues_service.open_counts(cur, engagement_id)
         eng["is_locked"] = locking.is_locked(cur, engagement_id)
         eng["materiality"] = materiality_service.get_config(cur, engagement_id)
+        eng["entity_label"] = entity.ENTITY_LABELS.get(eng["entity_type"])
         return json_response(eng)
+
+
+class EntityTypeIn(BaseModel):
+    entity_type: str | None = None
+
+
+@router.patch("/engagements/{engagement_id}/entity-type")
+def patch_entity_type(engagement_id: int, body: EntityTypeIn, user: dict = Depends(require("entity.set"))):
+    with tx(user["id"]) as cur:
+        return json_response(engagement_service.set_entity_type(cur, user, engagement_id, body.entity_type))
+
+
+# ---- Q4 Word exports ---------------------------------------------------------------------------------------------
+def _docx(engagement_id: int, user: dict, kind: str, filename: str, builder):
+    with tx(user["id"]) as cur:
+        _engagement_or_404(cur, engagement_id)
+        data = builder(cur, engagement_id)
+        cur.execute("SELECT fy_label, data_revision FROM engagements WHERE id = %s", (engagement_id,))
+        eng = cur.fetchone()
+        if kind == "pack":
+            pack_service.log_export(cur, user, engagement_id, "docx")             # a Word export is also a build: the revision is recorded
+        audit_service.event(cur, engagement_id, "DOCX_EXPORTED", {"document": kind, "data_revision": eng["data_revision"], "bytes": len(data)})
+    return Response(content=data, media_type=docx_export_service.DOCX_MIME,
+                    headers={"Content-Disposition": f'attachment; filename="{filename}-FY{eng["fy_label"]}.docx"'})
+
+
+@router.get("/engagements/{engagement_id}/export/statements.docx")
+def export_statements_docx(engagement_id: int, user: dict = Depends(require("pack.export"))):
+    return _docx(engagement_id, user, "statements", "Financial-Statements", docx_export_service.statements_docx)
+
+
+@router.get("/engagements/{engagement_id}/export/notes.docx")
+def export_notes_docx(engagement_id: int, user: dict = Depends(require("pack.export"))):
+    return _docx(engagement_id, user, "notes", "Notes-to-Accounts", docx_export_service.notes_docx)
+
+
+@router.get("/engagements/{engagement_id}/export/pack.docx")
+def export_pack_docx(engagement_id: int, user: dict = Depends(require("pack.export"))):
+    return _docx(engagement_id, user, "pack", "Audit-Pack", docx_export_service.pack_docx)
 
 
 # ---- T-01 ------------------------------------------------------------------------------------------------------

@@ -19,9 +19,14 @@ def eid(client):
 
 
 @pytest.fixture(scope="module")
-def mapped(client, eid):
+def mapped(client, eid, test_db_url):
     assert client.post(f"/api/engagements/{eid}/tb/import", files={"file": ("tb.csv", PILOT, "text/csv")}, headers=MAKER).status_code == 200
     assert client.post(f"/api/engagements/{eid}/mappings/auto-map", headers=MAKER).status_code == 200
+    # CHK-06 is a real check since Step 15 (Q1). To exercise the sign-off gate with a check that FAILS, this module puts it back into the engine's
+    # 'pending definition' state (a pending check counts as not passing); the sign-off test restores the real rule.
+    with psycopg.connect(test_db_url, autocommit=True) as conn:
+        conn.execute("""UPDATE check_definitions SET name='Sixth check (open question Q1)', rule_type='pending_definition', definition_status='pending_definition',
+                               rule_config='{"message":"Pending Product Owner confirmation on Q1"}' WHERE code='CHK-06'""")
     assert client.post(f"/api/engagements/{eid}/checks/run", headers=MAKER).status_code == 200
 
 
@@ -128,10 +133,9 @@ def test_only_a_partner_can_sign_off(client, eid, mapped):
 
 
 def test_partner_signs_off_and_the_engagement_locks(client, eid, mapped, test_db_url):
-    # Answer Q1: give CHK-06 a real rule (a test-only stand-in), then every check can pass.
+    # Answer Q1: restore the real CHK-06 (notes reconcile to the statement face), then every check can pass.
     with psycopg.connect(test_db_url, autocommit=True) as conn:
-        conn.execute("""UPDATE check_definitions SET rule_type='mapping_complete', rule_config='{}',
-                               definition_status='confirmed' WHERE code='CHK-06'""")
+        conn.execute("""UPDATE check_definitions SET name='Notes reconcile to statement face', rule_type='notes_reconcile_face', rule_config='{}', definition_status='confirmed' WHERE code='CHK-06'""")
     r = client.post(f"/api/engagements/{eid}/checks/run", headers=CHECKER).json()
     assert r["summary"]["text"] == "6 of 6 active checks passing"
     assert issues(client, eid)["summary"]["open"] == 0                                         # CHK-06's issue auto-cleared; nothing else open

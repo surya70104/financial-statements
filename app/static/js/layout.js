@@ -54,6 +54,19 @@ const App = (() => {
   const onChange = fn => listeners.push(fn);
   const notify = what => listeners.forEach(fn => fn(what));
 
+  async function download(path, fallbackName) {
+    const res = await fetch(path, { headers: state.user ? { "X-User-Id": String(state.user.id) } : {} });
+    if (!res.ok) {
+      let msg = "Download failed (" + res.status + ")";
+      try { const d = await res.json(); if (d && d.detail) msg = typeof d.detail === "string" ? d.detail : (d.detail.message || msg); } catch (e) { /* keep the generic message */ }
+      throw new Error(msg);
+    }
+    const m = /filename="?([^";]+)"?/.exec(res.headers.get("Content-Disposition") || "");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(await res.blob()); a.download = m ? m[1] : fallbackName;
+    document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
   function renderUnitToggle() {
     document.querySelectorAll("#unit-toggle button").forEach(b => b.classList.toggle("on", b.dataset.unit === state.unit));
   }
@@ -62,7 +75,7 @@ const App = (() => {
     const e = state.engagement;
     document.getElementById("engagement-label").textContent =
       e.client_name + " | FY " + e.fy_label + (e.engagement_type === "STATUTORY_AUDIT" ? " | Statutory Audit" : "");
-    document.getElementById("template-banner").hidden = !!e.template_confirmed_at;
+    document.getElementById("template-banner").hidden = !!e.template_confirmed;
     document.getElementById("template-name").textContent = e.template_name;
     setUnmappedBadge(e.counts.unmapped_ledgers);
     setChecksBadge(e.checks);
@@ -100,7 +113,7 @@ const App = (() => {
   // ---- print (T-15): the statutory report header is filled just before the browser prints ----
   const PRINT_TITLES = { bs: "Balance Sheet", pnl: "Statement of Profit and Loss", notes: "Notes to the Financial Statements",
                          ratios: "Ratios", pack: "Audit Committee / IA Pack", audit: "Audit Trail", lfar: "LFAR Assistant: Loan Scrutiny and Checklist" };
-  const ENTITY = { PRIVATE_LIMITED: "Private Limited Company", PUBLIC_LIMITED: "Public Limited Company", LLP: "Limited Liability Partnership",
+  const ENTITY = { private_limited: "Private Limited Company", partnership: "Partnership Firm", PRIVATE_LIMITED: "Private Limited Company", PUBLIC_LIMITED: "Public Limited Company", LLP: "Limited Liability Partnership",
                    PARTNERSHIP: "Partnership Firm", PROPRIETORSHIP: "Proprietorship" };
   const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   function longDate(iso) {
@@ -161,6 +174,11 @@ const App = (() => {
     state.unit = store("cw.unit") || state.engagement.default_unit || "LAKH";
     renderHeader(); renderUnitToggle();
     document.querySelectorAll("[data-print]").forEach(b => b.addEventListener("click", () => window.print()));
+    document.querySelectorAll("[data-docx]").forEach(b => b.addEventListener("click", async () => {      // Word (.docx) export of statements / notes / pack
+      b.disabled = true;
+      try { await download("/api/engagements/" + state.engagement.id + "/export/" + b.dataset.docx + ".docx", b.dataset.docx + ".docx"); toast("Word file downloaded."); }
+      catch (err) { toast(err.message, true); } finally { b.disabled = false; }
+    }));
     document.querySelectorAll("#unit-toggle button").forEach(b => b.addEventListener("click", () => {
       state.unit = b.dataset.unit; store("cw.unit", state.unit); renderUnitToggle(); renderMaterialityBadge(); notify("unit");
     }));
@@ -172,5 +190,5 @@ const App = (() => {
     toast(err.message, true); throw err;
   });
 
-  return { state, ready, api, h, toast, money, unitLabel, canEdit, onChange, refreshHeader, setUnmappedBadge, setChecksBadge, setIssuesBadge, isLocked, fillPrintHeader };
+  return { state, ready, api, h, toast, money, unitLabel, canEdit, onChange, refreshHeader, download, setUnmappedBadge, setChecksBadge, setIssuesBadge, isLocked, fillPrintHeader };
 })();

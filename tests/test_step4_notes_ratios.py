@@ -57,9 +57,8 @@ def test_chk03_is_enabled_and_passes(client, eid, mapped):
     s, items = r["summary"], {i["code"]: i for i in r["items"]}
     assert items["CHK-03"]["is_enabled"] is True and items["CHK-03"]["status"] == "pass"
     assert D(items["CHK-03"]["variance"]) == 0
-    assert (s["passed"], s["total"], s["text"]) == (5, 6, "5 of 6 active checks passing")
-    assert [c for c, i in items.items() if i["status"] != "pass"] == ["CHK-06"]
-    assert s["notes"] == ["CHK-06 awaits Q1"]
+    assert (s["passed"], s["total"], s["text"]) == (6, 6, "6 of 6 active checks passing")
+    assert [c for c, i in items.items() if i["status"] != "pass"] == [] and s["notes"] == []
 
 
 def test_chk03_fails_with_exact_difference_when_a_note_is_missing(client, eid, mapped, test_db_url):
@@ -91,7 +90,7 @@ def test_ratios_come_from_statement_figures(client, eid, mapped):
     lines = lines_of(bs, pnl)
     cur = lambda c: D(lines[c]["current"])
     by = {i["code"]: i for i in ratios["items"]}
-    assert ratios["provisional"] is True and len(by) == 9 and all(i["is_provisional"] for i in by.values())
+    assert ratios["provisional"] is False and len(by) == 9 and not any(i["is_provisional"] for i in by.values())      # confirmed in Step 15 (Q7)
     assert [i["name"] for i in ratios["items"]][0] == "Current Ratio" and all(i["formula"] for i in ratios["items"])
 
     cr = by["R-01"]

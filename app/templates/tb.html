@@ -1,6 +1,18 @@
 {% extends "base.html" %}
 {% block title %}Trial Balance &amp; Import - CA Workbench{% endblock %}
 {% block content %}
+<section class="card" id="entity-card">
+  <div class="row between">
+    <div><h2>Engagement setup</h2><span class="muted" id="entity-hint"></span></div>
+    <label>Entity type
+      <select id="entity-type" aria-label="Entity type">
+        <option value="private_limited">Private Limited Company (Schedule III)</option>
+        <option value="partnership">Partnership Firm</option>
+      </select>
+    </label>
+  </div>
+</section>
+
 <section class="card">
   <h2>Import Tally trial balance</h2>
   <p class="muted">CSV or Excel (.xlsx) with columns: Ledger Name, Under Group, Opening Balance, Opening Type, Debit, Credit, Closing Balance, Closing Type.
@@ -68,4 +80,4 @@
   </div>
 </section>
 {% endblock %}
-{% block scripts %}<script src="/static/js/tb.js"></script><script src="/static/js/comparatives.js"></script>{% endblock %}
+{% block scripts %}<script src="/static/js/tb.js"></script><script src="/static/js/comparatives.js"></script><script src="/static/js/entity_type.js"></script>{% endblock %}

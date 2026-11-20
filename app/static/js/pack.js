@@ -18,7 +18,7 @@
       dl([["Entity", hd.entity.name], ["CIN / PAN", [hd.entity.cin, hd.entity.pan].filter(Boolean).join(" / ") || "Not recorded"],
           ["Financial year", "FY " + hd.financial_year + " (" + hd.period_start + " to " + hd.period_end + ")"],
           ["Engagement", hd.engagement_type.replace(/_/g, " ").toLowerCase() + " · " + hd.engagement_status],
-          ["Template", t.name + " · " + (t.confirmed ? "confirmed" : "NOT confirmed (Q2)")],
+          ["Template", t.name + " · " + (t.confirmed ? "confirmed" : "NOT confirmed")],
           ["Sign-off status", chip(g.is_locked ? "ok" : (g.can_sign_off ? "warn" : "bad"), (g.is_locked ? "🔒 " : "") + g.status)],
           ["Signed off", g.is_locked ? g.signed_off_by + ", " + fmtDate(g.signed_off_at) : "Not signed off (" + g.blockers + " blocker(s) open)"],
           ["Data revision / generated", hd.data_revision + " · " + fmtDate(hd.generated_at)]]),
@@ -39,7 +39,7 @@
         row(bs.total_equity_and_liabilities, true), row(bs.non_current_assets), row(bs.current_assets), row(bs.total_assets, true)], [1, 2]),
       table(["Statement of Profit and Loss", f.current_label, f.previous_label], [row(pl.revenue_from_operations), row(pl.other_income), row(pl.total_income, true),
         row(pl.total_expenses), row(pl.profit_before_tax), row(pl.tax_expense), row(pl.profit_for_period, true)], [1, 2]),
-      h("h3", {}, "Key ratios"), h("div", { class: "banner", style: "margin:0 0 8px" }, f.ratios.note + " (" + f.ratios.open_question + ")"),
+      h("h3", {}, "Key ratios"), f.ratios.provisional ? h("div", { class: "banner", style: "margin:0 0 8px" }, f.ratios.note) : h("p", { class: "muted" }, f.ratios.note),
       table(["Ratio", "Formula", "Value"], f.ratios.items.map(r => tr([r.name, r.formula,
         r.status === "na" ? "N/A" : r.value + (r.unit === "%" ? " %" : " times")], [2]))));
   }

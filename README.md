@@ -4,7 +4,7 @@ A local web app for Chartered Accountants to turn a Tally trial balance into Sch
 
 Pilot client: **9AND9 DIGISOFT INSIGHTS PRIVATE LIMITED**, FY 2026-27, Statutory Audit. The spec is `Financial_Statements_Developer_Task_Brief.docx` (not in this repo).
 
-**Status:** all three passes are built and ready for review: Pass 1 (Steps 1-5), Pass 2 (Steps 6-9), Pass 3 (Steps 10-13, the WP9 connected modules) and Step 14, which closes the acceptance-criteria gaps found when the build was audited against the brief. The product questions Q1-Q7 below are still open and affect labels, one check and the ratio formulas, not the build.
+**Status:** complete. Pass 1 (Steps 1-5), Pass 2 (Steps 6-9), Pass 3 (Steps 10-13, the WP9 connected modules), Step 14 (acceptance-criteria gaps closed) and Step 15 (the Product Owner's answers to Q1, Q2, Q4 and Q7 implemented). Every open question in the brief is now resolved.
 
 ## Tech stack
 
@@ -14,7 +14,7 @@ Pilot client: **9AND9 DIGISOFT INSIGHTS PRIVATE LIMITED**, FY 2026-27, Statutory
 | Database | PostgreSQL 16, `psycopg` 3 with plain SQL (no ORM) |
 | Frontend | Server-rendered Jinja2 pages with vanilla JavaScript (no framework, no build step) |
 | Money | `NUMERIC(18,2)` rupees in the database and exact string decimals in the API. The shared `money.js` handles display (Lakhs or Rupees, Indian grouping, negatives in brackets) and exact paise comparisons. |
-| Files | `openpyxl` reads `.xlsx` uploads; `.csv` is also accepted |
+| Files | `openpyxl` reads `.xlsx` uploads (`.csv` is also accepted); `python-docx` writes the Word (.docx) exports |
 | Tests | pytest (against a throwaway `<db>_test` database) and a Node test for `money.js` |
 
 Core rules: every figure is calculated from the adjusted trial balance and never typed in. The audit trail (`audit_logs`) is append-only and written by database triggers plus business events. Roles are enforced through the `X-User-Id` header. Once the Partner signs off, the engagement is locked in both the services (HTTP 409) and the database. Connected modules post through the same approved-journal path as ordinary adjustments, so the statements, checks and notes always follow.
@@ -60,7 +60,15 @@ Core rules: every figure is calculated from the adjusted trial balance and never
 
 The navigation tabs are in audit-workflow order on a single row.
 
-Screens: Trial Balance & Import (with prior-year comparatives), Mapping, Materiality, Adjustments, TDS / TCS, FD Register, Reconciliation, GSTR-9C, Balance Sheet, Profit & Loss, Notes, Ratios, Checks, Issues, Working Papers, LFAR, Audit Pack, Sign-Off, UDIN and Audit Trail.
+### Step 15: the open questions, answered and built
+| Question | Decision implemented |
+|---|---|
+| Q1 sixth check | **CHK-06 Notes reconcile to statement face.** Every note total is recomputed from the adjusted trial balance, note by note, and compared with its line on the face of the Balance Sheet / P&L to the paisa. It passes on the balanced pilot, so all 6 of 6 checks pass and Partner sign-off works with no workaround. It fails, and blocks sign-off, if a note and its statement line differ. |
+| Q2 entity template | Template Schedule III (Division I), Private Limited Company, is **confirmed** and the yellow banner is gone. An **Entity type** selector on the Trial Balance tab (Private Limited Company or Partnership Firm; Checker or Partner; locked at sign-off) relabels the equity lines to **Partners' Capital Account** and **Partners' Current Account** (and the notes and Word files follow). No figure changes. |
+| Q4 output formats | PDF (browser Print / Save PDF) **and Word**. **Download Word (.docx)** buttons on Balance Sheet, Profit & Loss, Notes and Audit Pack produce A4 files with the company header, current and previous year in Indian currency format, the notes with the fixed-deposit schedule, the full audit pack, and Director / Partner and CA signature blocks (with the UDIN when recorded). |
+| Q7 ratios | The nine ratios are labelled **Standard Schedule III / ICAI Analytical Ratios (Confirmed)**; the provisional banner is removed. Each ratio shows numerator, denominator, current year, previous year and **% variance**. |
+
+Screens: Trial Balance & Import (with the entity type and prior-year comparatives), Mapping, Materiality, Adjustments, TDS / TCS, FD Register, Reconciliation, GSTR-9C, Balance Sheet, Profit & Loss, Notes, Ratios, Checks, Issues, Working Papers, LFAR, Audit Pack, Sign-Off, UDIN and Audit Trail.
 
 ## Local setup
 
@@ -73,7 +81,7 @@ Requirements: Windows PowerShell, Python 3.11+, Node.js, and a running PostgreSQ
 DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/ca_workbench_fs
 ```
 
-3. Install, migrate and start. The first run creates `.venv`, installs the dependencies and applies migrations `001`-`014`:
+3. Install, migrate and start. The first run creates `.venv`, installs the dependencies and applies migrations `001`-`015`:
 
 ```powershell
 cd D:\FINANCIAL-STATEMENTS
@@ -88,7 +96,7 @@ Other commands:
 .\.venv\Scripts\python.exe -m scripts.init_db --status   # list applied and pending migrations
 .\.venv\Scripts\python.exe -m scripts.init_db            # apply pending migrations only
 .\.venv\Scripts\python.exe -m scripts.make_samples       # regenerate the sample workbooks in samples\
-.\.venv\Scripts\python.exe -m pytest -q                  # 86 tests
+.\.venv\Scripts\python.exe -m pytest -q                  # 91 tests
 node tests/test_money.js                                 # 19 money-format checks
 ```
 
@@ -117,25 +125,25 @@ Sample data lives in `sample_data\` and `samples\`. Upload them on the matching 
 
 The files are generated by `scripts/make_samples.py` from ledger names that exist in the pilot trial balance.
 
-## Pending Product Owner decisions
+## Product Owner decisions: all resolved
 
-The build is complete for review. These questions from the brief are still open; the app works in the meantime using the defaults noted.
+| # | Question | Resolution |
+|---|---|---|
+| Q1 | The sixth check | **Resolved / Implemented (Step 15).** CHK-06 Notes reconcile to statement face. |
+| Q2 | Entity type and template | **Resolved / Implemented (Step 15).** Schedule III (Division I) for a Private Limited Company is confirmed; a Partnership Firm option relabels the equity lines. |
+| Q3 | Tally report and fields | **Resolved.** The Tally trial balance (ledger, group, opening, debit, credit, closing) in CSV or Excel, as in `sample_data`. |
+| Q4 | Output formats | **Resolved / Implemented (Step 15).** PDF through the browser, and Word (.docx). |
+| Q5 | Which WP9 modules | **Resolved (Steps 10-13).** All six: materiality, TDS/TCS, FD register, reconciliation, GSTR-9C, LFAR. |
+| Q6 | Materiality input | **Resolved (Step 10).** Both manual and calculated (% of a benchmark). |
+| Q7 | Ratio definitions | **Resolved / Implemented (Step 15).** The nine standard Schedule III / ICAI analytical ratios, confirmed, with the previous year and % variance. |
 
-| # | Question | What it unblocks | How the app behaves now |
-|---|---|---|---|
-| Q1 | Name the sixth check and write its rule | CHK-06 passes for real | CHK-06 is "pending" and fails, so it blocks every genuine sign-off. The tests use a stand-in rule. |
-| Q2 | Is the entity a company (share capital, reserves and surplus) or a partnership? Is template AM-STAT correct? | Correct equity labels and mapping; the FD lines | A banner says the template is not confirmed. The FD register assumes current FDs on Cash and cash equivalents and non-current on Other non-current assets. |
-| Q3 | Which Tally report and fields are imported? | Confirms the TB import format | The Tally trial balance CSV or Excel format in `sample_data` is used. |
-| Q4 | Output formats for Schedule III and the IA Report: PDF, Word or both | Output work | Browser Print / Save PDF only. Word output would be new work. |
-| Q5 | Which WP9 modules are in this release? | Scope of WP9 | All six are built (T-19 to T-24). |
-| Q6 | Is materiality entered manually or calculated? | The T-23 input | Both are supported. |
-| Q7 | Which ratio definitions? | Formulas on the Ratios tab | Provisional formulas, shown beside each ratio. |
+CHK-03 (notes tie to statement lines) and CHK-06 both compare notes with the statements; CHK-06 recomputes the note totals independently, straight from the adjusted trial balance, so the two will normally pass or fail together.
 
 ## Known limitations
 - **Prior-year comparatives** are 0.00 until you enter them (Trial Balance tab). Until then the comparative columns are empty and materiality flags no year-on-year variance.
 - Posting the TDS/TCS and FD registers **adds** to the trial balance, so post only items that are not already booked.
-- The browser's print preview and PDF output have not been checked by eye.
-- The locked, reopened and v2 sign-off screens, and the upload-and-post flows of Steps 11-13, are covered by API tests but have not all been seen in the browser.
+- The browser's print preview, PDF output and the Word files have been checked by tests (valid files, correct text and figures) but not opened in Word or looked at on paper.
+- The locked, reopened and v2 sign-off screens, the Word download buttons, and the upload-and-post flows of Steps 11-14 are covered by API tests but have not all been clicked through in a browser.
 - Reversals of reversals build long nested descriptions (cosmetic).
 - The FD note lists the register's FDs; the statements themselves show FDs on their Schedule III lines (and interest in Other income), not as a separate statement line.
 - Sign-in uses the `X-User-Id` dev switcher, not real authentication.

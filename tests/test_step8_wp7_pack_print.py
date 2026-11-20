@@ -40,7 +40,7 @@ def test_pack_matches_the_live_figures(client, eid, pending_q1):
     # 1. governance header
     hd = pack["header"]
     assert hd["entity"]["name"].startswith("9AND9 DIGISOFT") and hd["financial_year"] == "2026-27"
-    assert hd["template"]["confirmed"] is False and hd["template"]["open_question"] == "Q2" and "Q2" in hd["template"]["note"]
+    assert hd["template"]["confirmed"] is True and hd["template"]["note"] is None and hd["entity"]["entity_type"] == "private_limited"        # Q2 resolved in Step 15
     assert hd["governance"]["is_locked"] is True and hd["governance"]["signed_off_by"] == "Priya Partner"
     assert hd["governance"]["status"] == "SIGNED OFF AND LOCKED"
 
@@ -53,7 +53,7 @@ def test_pack_matches_the_live_figures(client, eid, pending_q1):
     assert D(fin["profit_and_loss"]["profit_for_period"]["current"]) == D(pnl["profit_for_period"]["current"]) == D("-481634.00")
     rev = next(l for s in pnl["sections"] for l in s["lines"] if l["code"] == "PL.REV")
     assert D(fin["profit_and_loss"]["revenue_from_operations"]["current"]) == D(rev["current"]) > 0
-    assert fin["ratios"]["provisional"] is True and fin["ratios"]["open_question"] == "Q7" and "Q7" in fin["ratios"]["note"]
+    assert fin["ratios"]["provisional"] is False and "Confirmed" in fin["ratios"]["note"]                                                     # Q7 resolved in Step 15
     assert [(r["code"], r["value"], r["status"]) for r in fin["ratios"]["items"]] == [(r["code"], r["value"], r["status"]) for r in ratios["items"]]
 
     # 3. adjustments (the Step 5 tests left one approved entry and its approved reversal)

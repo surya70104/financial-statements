@@ -1,15 +1,14 @@
 {% extends "base.html" %}
 {% block title %}Ratios - CA Workbench{% endblock %}
 {% block content %}
-<div class="banner" id="q7-banner" hidden></div>
 <div id="stmt-warning" class="panel bad" hidden></div>
 <section class="card">
-  <div class="row between"><h2>Ratios</h2><div class="row"><span class="muted" id="ratios-unit"></span>
+  <div class="row between"><div><h2>Ratios</h2><span class="chip ok" id="ratios-basis">Standard Schedule III / ICAI Analytical Ratios (Confirmed)</span></div><div class="row"><span class="muted" id="ratios-unit"></span>
     <button type="button" class="no-print" data-print>🖨 Print / Save PDF</button></div></div>
-  <p class="muted">Calculated only from the Balance Sheet and Profit &amp; Loss figures. A ratio shows N/A when its denominator is zero.</p>
+  <p class="muted">Calculated only from the Balance Sheet and Profit &amp; Loss figures. A ratio shows N/A when its denominator is zero. The previous-year ratio uses closing balances, as there is no year before it. % variance is the change on the previous year.</p>
   <div class="scroll">
     <table id="ratios-table">
-      <thead><tr><th>Ratio</th><th>Formula</th><th class="num">Numerator</th><th class="num">Denominator</th><th class="num">Computed ratio</th></tr></thead>
+      <thead><tr><th>Ratio</th><th>Formula</th><th class="num">Numerator</th><th class="num">Denominator</th><th class="num" id="th-cur">Current FY</th><th class="num" id="th-prev">Previous FY</th><th class="num">% variance</th></tr></thead>
       <tbody></tbody>
     </table>
   </div>

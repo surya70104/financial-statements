@@ -28,14 +28,13 @@ def test_all_mapped_state(client, eid):
     # the auto-map above re-ran the checks by itself: no manual run needed
     summary, c = checks(client, eid)
     assert summary["has_run"] and not summary["stale"]
-    assert (summary["passed"], summary["total"]) == (5, 6)         # CHK-03 is on since Step 4
-    assert summary["text"] == "5 of 6 active checks passing"
-    for code in ("CHK-01", "CHK-02", "CHK-03", "CHK-04", "CHK-05"):
+    assert (summary["passed"], summary["total"]) == (6, 6)         # CHK-03 is on since Step 4, CHK-06 is real since Step 15 (Q1)
+    assert summary["text"] == "6 of 6 active checks passing"
+    for code in ("CHK-01", "CHK-02", "CHK-03", "CHK-04", "CHK-05", "CHK-06"):
         assert c[code]["status"] == "pass", code
         assert D(c[code]["variance"]) == 0
     assert c["CHK-01"]["lhs_amount"] == "272641256.00" and c["CHK-01"]["rhs_amount"] == "272641256.00"
-    assert c["CHK-06"]["status"] == "fail" and "Q1" in c["CHK-06"]["detail"]["message"]
-    assert summary["notes"] == ["CHK-06 awaits Q1"]
+    assert c["CHK-06"]["detail"]["notes_checked"] == c["CHK-06"]["detail"]["notes_tying"] > 0 and summary["notes"] == []
 
 
 def test_unmap_one_ledger_flips_checks_and_remap_restores(client, eid):
@@ -46,7 +45,7 @@ def test_unmap_one_ledger_flips_checks_and_remap_restores(client, eid):
 
     assert client.delete(f"/api/engagements/{eid}/mappings/{victim['ledger_id']}", headers=MAKER).status_code == 200
     summary, c = checks(client, eid)
-    assert not summary["stale"] and summary["passed"] == 3 and summary["total"] == 6
+    assert not summary["stale"] and summary["passed"] == 4 and summary["total"] == 6          # CHK-01 and CHK-04 fail; CHK-06 still ties (the ledger is out of both sides)
     assert c["CHK-04"]["status"] == "fail" and D(c["CHK-04"]["variance"]) == 1
     assert c["CHK-04"]["detail"]["unmapped_ledgers"] == 1 and D(c["CHK-04"]["detail"]["unmapped_net_balance"]) == bal
     # CHK-01 differs by the unmapped sales ledger exactly (Cr balance left out => assets exceed E&L by that rupee amount)
@@ -54,14 +53,14 @@ def test_unmap_one_ledger_flips_checks_and_remap_restores(client, eid):
 
     assert client.post(f"/api/engagements/{eid}/mappings/{victim['ledger_id']}", json={"line_id": line_id}, headers=MAKER).status_code == 200
     summary, c = checks(client, eid)
-    assert (summary["passed"], summary["total"]) == (5, 6)
+    assert (summary["passed"], summary["total"]) == (6, 6)
     assert c["CHK-01"]["status"] == "pass" and c["CHK-04"]["status"] == "pass" and D(c["CHK-04"]["variance"]) == 0
 
 
 def test_run_endpoint_permissions_and_audit(client, eid):
     assert client.post(f"/api/engagements/{eid}/checks/run").status_code == 401
     r = client.post(f"/api/engagements/{eid}/checks/run", headers=CHECKER)
-    assert r.status_code == 200 and r.json()["summary"]["text"] == "5 of 6 active checks passing"
+    assert r.status_code == 200 and r.json()["summary"]["text"] == "6 of 6 active checks passing"
     logs = client.get(f"/api/engagements/{eid}/audit-logs", headers=MAKER).json()
     assert any(a["event_name"] == "CHECKS_RUN" for a in logs)
 

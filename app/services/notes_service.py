@@ -11,7 +11,7 @@ from decimal import Decimal
 
 from fastapi import HTTPException
 
-from app.services import statement_service
+from app.services import entity, statement_service
 
 ZERO = Decimal("0.00")
 
@@ -38,7 +38,7 @@ def build(cur, engagement_id: int, bs: dict | None = None, pnl: dict | None = No
     pnl = pnl or statement_service.profit_and_loss(cur, engagement_id)
     lines = statement_lines(bs, pnl)
 
-    cur.execute("SELECT template_id FROM engagements WHERE id = %s", (engagement_id,))
+    cur.execute("SELECT template_id, entity_type FROM engagements WHERE id = %s", (engagement_id,))
     eng = cur.fetchone()
     if not eng:
         raise HTTPException(404, "Engagement not found.")
@@ -71,7 +71,7 @@ def build(cur, engagement_id: int, bs: dict | None = None, pnl: dict | None = No
         note_total = _q(ledger_total + sum((_q(e["closing"]) for e in extras), ZERO))
         line = lines[n["line_code"]]
         diff = _q(note_total - _q(line["current"]))
-        out.append({"note_no": n["note_no"], "title": n["title"], "statement": n["statement"],
+        out.append({"note_no": n["note_no"], "title": entity.note_title(eng["entity_type"], n["line_code"], n["title"]), "statement": n["statement"],
                     "line_code": n["line_code"], "line_label": line["label"], "ledgers": ledgers, "extras": extras,
                     "ledger_total": ledger_total, "note_total": note_total, "line_total": _q(line["current"]),
                     "previous_total": _q(line["previous"]), "difference": diff, "ties": diff == 0})

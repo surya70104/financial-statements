@@ -59,6 +59,32 @@ def _notes_tie(cur, eid, cfg, ctx):
         "notes_tying": t["tying"], "failing_notes": t["failing"]}
 
 
+def _notes_reconcile_face(cur, eid, cfg, ctx):
+    """CHK-06: every note total equals its line on the face of the statements, to the paisa. The note totals are recomputed here, straight
+    from the adjusted trial balance and note by note (the reserves note also carries the year's profit and other movements), and compared
+    with the figure printed on the Balance Sheet / Statement of Profit and Loss."""
+    lines = notes_service.statement_lines(ctx["bs"], ctx["pnl"])
+    cur.execute("""SELECT tl.code AS line_code, string_agg(DISTINCT n.note_no::text, ', ') AS note_nos, min(n.title) AS title,
+                          tl.presentation_sign, coalesce(sum(a.adjusted_balance), 0) AS signed
+                     FROM engagements e JOIN template_notes n ON n.template_id = e.template_id JOIN template_lines tl ON tl.id = n.line_id
+                     LEFT JOIN v_adjusted_tb a ON a.engagement_id = e.id AND a.note_id = n.id
+                    WHERE e.id = %s GROUP BY tl.id ORDER BY min(n.sort_order)""", (eid,))
+    failing, checked, total_diff = [], 0, ZERO
+    for r in cur.fetchall():
+        checked += 1
+        note_total = _q(r["signed"] * r["presentation_sign"])
+        line = lines[r["line_code"]]
+        if "breakdown" in line:                                           # reserves: the period's profit and other movements are part of the note
+            note_total = _q(note_total + line["breakdown"]["profit_for_period"] + line["breakdown"]["other_movements"])
+        face = _q(line["current"])
+        diff = _q(note_total - face)
+        if diff != 0:
+            total_diff += abs(diff)
+            failing.append({"note_no": r["note_nos"], "title": r["title"], "line": line["label"], "note_total": note_total, "line_total": face, "difference": diff})
+    return ("pass" if not failing else "fail"), total_diff, ZERO, {
+        "labels": ["Sum of note vs statement-face differences", "Expected"], "notes_checked": checked, "notes_tying": checked - len(failing), "failing_notes": failing}
+
+
 def _mapping_complete(cur, eid, cfg, ctx):
     cur.execute("""SELECT count(*) AS n, coalesce(sum(lb.closing_balance), 0) AS net
                      FROM v_unmapped_ledgers u LEFT JOIN ledger_balances lb ON lb.ledger_id = u.ledger_id
@@ -84,7 +110,7 @@ def _pending_definition(cur, eid, cfg, ctx):
 
 
 REGISTRY = {"bs_balance": _bs_balance, "profit_ties_reserves": _profit_ties_reserves, "notes_tie": _notes_tie,
-            "mapping_complete": _mapping_complete, "comparatives_present": _comparatives_present,
+            "mapping_complete": _mapping_complete, "comparatives_present": _comparatives_present, "notes_reconcile_face": _notes_reconcile_face,
             "pending_definition": _pending_definition}
 
 

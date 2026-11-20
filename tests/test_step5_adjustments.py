@@ -115,7 +115,7 @@ def test_draft_changes_nothing_then_approval_flows_everywhere(client, eid, mappe
     checks = client.get(f"/api/engagements/{eid}/checks").json()
     c = {i["code"]: i["status"] for i in checks["items"]}
     assert c["CHK-01"] == "pass" and c["CHK-02"] == "pass" and c["CHK-03"] == "pass"
-    assert checks["summary"]["text"] == "5 of 6 active checks passing" and not checks["summary"]["stale"]
+    assert checks["summary"]["text"] == "6 of 6 active checks passing" and not checks["summary"]["stale"]
 
     # ---- immutability (database level) ----
     with psycopg.connect(test_db_url, autocommit=True) as conn:

@@ -107,9 +107,9 @@ def test_partner_reopens_v1_edits_then_signs_v2_and_v1_stays_intact(client, eid,
     entry = made.json()
     assert client.post(f"/api/engagements/{eid}/adjustments/{entry.get('id') or entry['entry_number']}/approve", headers=CHECKER).status_code == 200
 
-    # the checks must pass for v2: give CHK-06 the Step 6 stand-in rule (Q1 is still open in the product)
+    # the checks must pass for v2: put the real CHK-06 back (Step 8's fixture had made it 'pending' again)
     with psycopg.connect(test_db_url, autocommit=True) as conn:
-        conn.execute("""UPDATE check_definitions SET rule_type='mapping_complete', rule_config='{}', definition_status='confirmed' WHERE code='CHK-06'""")
+        conn.execute("""UPDATE check_definitions SET name='Notes reconcile to statement face', rule_type='notes_reconcile_face', rule_config='{}', definition_status='confirmed' WHERE code='CHK-06'""")
     assert client.post(f"/api/engagements/{eid}/checks/run", headers=CHECKER).json()["summary"]["text"] == "6 of 6 active checks passing"
 
     assert client.post(f"/api/engagements/{eid}/signoff", headers=MAKER).status_code == 403

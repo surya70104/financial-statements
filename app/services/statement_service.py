@@ -11,7 +11,7 @@ from decimal import Decimal
 
 from fastapi import HTTPException
 
-from app.services import exceptions_service
+from app.services import entity, exceptions_service
 
 ZERO = Decimal("0.00")
 RESERVES_CODE = "BS.EQ.RS"
@@ -34,7 +34,7 @@ def _prior_label(fy_label: str) -> str:
 
 
 def _load(cur, engagement_id: int, statement: str):
-    cur.execute("SELECT id, fy_label, template_id, other_reserves_movement, template_confirmed_at FROM engagements WHERE id = %s",
+    cur.execute("SELECT id, fy_label, template_id, other_reserves_movement, template_confirmed, entity_type FROM engagements WHERE id = %s",
                 (engagement_id,))
     eng = cur.fetchone()
     if not eng:
@@ -46,7 +46,10 @@ def _load(cur, engagement_id: int, statement: str):
                      LEFT JOIN v_statement_line_totals t ON t.line_id = l.id AND t.engagement_id = %s
                     WHERE l.template_id = %s AND l.statement = %s ORDER BY l.sort_order""",
                 (engagement_id, eng["template_id"], statement))
-    return eng, cur.fetchall()
+    lines = cur.fetchall()
+    for ln in lines:                                      # a partnership shows Partners' Capital / Current Account instead of Share capital / Reserves
+        ln["label"] = entity.line_label(eng["entity_type"], ln["code"], ln["label"])
+    return eng, lines
 
 
 def _evaluate(lines: list, adjust: dict[str, Decimal] | None = None):
@@ -107,7 +110,7 @@ def profit_and_loss(cur, engagement_id: int) -> dict:
     return {
         "statement": "PL", "title": "Statement of Profit and Loss",
         "current_label": f"FY {eng['fy_label']}", "previous_label": _prior_label(eng["fy_label"]),
-        "template_confirmed": eng["template_confirmed_at"] is not None,
+        "template_confirmed": eng["template_confirmed"], "entity_type": eng["entity_type"],
         "sections": _group_sections(_rows(lines, vals)),
         "profit_for_period": {"current": pat[0], "previous": pat[1]},
         "warnings": _warnings(cur, engagement_id),
@@ -139,7 +142,7 @@ def balance_sheet(cur, engagement_id: int) -> dict:
     return {
         "statement": "BS", "title": "Balance Sheet",
         "current_label": f"FY {eng['fy_label']}", "previous_label": _prior_label(eng["fy_label"]),
-        "template_confirmed": eng["template_confirmed_at"] is not None,
+        "template_confirmed": eng["template_confirmed"], "entity_type": eng["entity_type"],
         "parts": [{"name": name, "sections": _group_sections(rows)} for name, rows in parts.items()],
         "check": {"status": status, "total_assets": total_assets[0], "total_equity_and_liabilities": total_el[0],
                   "difference": diff, "previous_difference": _q(total_assets[1] - total_el[1])},
